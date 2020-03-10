@@ -12,11 +12,10 @@ static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 pub struct Wasmbrot {
     width: usize,
     height: usize,
-    left: f32,
-    top: f32,
-    scale: f32,
-    depths: Vec<i32>, // -1 is synonymous with STOP
+    depth: u32,
+    depths: Vec<(bool, u32)>, // -1 is synonymous with STOP
     zs: Vec<(Complex, Complex)>,
+    colors: Vec<u8>,
 }
 
 #[wasm_bindgen]
@@ -29,10 +28,8 @@ impl Wasmbrot {
         Wasmbrot {
             width,
             height,
-            left,
-            top,
-            scale,
-            depths: vec![0; width * height],
+            depth: 0,
+            depths: vec![(true, 0); width * height],
             zs: (0..width * height)
                 .map(|idx| {
                     let row = idx / width;
@@ -46,32 +43,49 @@ impl Wasmbrot {
                     (point, point)
                 })
                 .collect(),
+            colors: vec![0; 4 * width * height],
         }
     }
 
     pub fn tick(&mut self) {
-        for idx in 0..self.depths.len() {
-            let depth = &mut self.depths[idx];
+        self.depth += 1;
 
-            if *depth == -1 {
-                return;
+        for idx in 0..(self.width * self.height) {
+            let (in_set, point_depth) = &mut self.depths[idx];
+
+            if *in_set {
+                let (z, c) = &mut self.zs[idx];
+
+                *z = *z * *z + *c;
+
+                if z.abs_sqr() > 4.0 {
+                    *in_set = false;
+                } else {
+                    *point_depth += 1;
+                }
             }
-
-            let (z, c) = &mut self.zs[idx];
-
-            *z = *z * *z + *c;
-
-            if z.abs_sqr() > 4.0 {
-                *depth = -1;
-                return;
-            }
-
-            *depth += 1;
         }
     }
 
-    pub fn depths(&self) -> *const i32 {
-        self.depths.as_ptr()
+    pub fn colorize(&mut self) {
+        for idx in 0..(self.width * self.height) {
+            let (_, point_depth) = &self.depths[idx];
+
+            let grey = (*point_depth as f32 / self.depth as f32).powf(1.0);
+
+            self.colors[4 * idx] = (grey * 255.0) as u8;
+            self.colors[4 * idx + 1] = (grey * 255.0) as u8;
+            self.colors[4 * idx + 2] = (grey * 255.0) as u8;
+            self.colors[4 * idx + 3] = 255;
+        }
+    }
+
+    pub fn depth(&self) -> u32 {
+        self.depth
+    }
+
+    pub fn colors(&self) -> *const u8 {
+        self.colors.as_ptr()
     }
 }
 
