@@ -75,7 +75,7 @@ impl Wasmbrot {
             } else {
                 let hue = point_depth as f32;
                 let sat = 1.0;
-                let lum = (point_depth as f32 / self.depth as f32).sqrt();
+                let lum = point_depth as f32 / self.depth as f32;
 
                 hsl_to_rgb(hue, sat, lum)
             };
