@@ -13,7 +13,7 @@ pub struct Wasmbrot {
     width: usize,
     height: usize,
     depth: u32,
-    depths: Vec<(bool, u32)>, // -1 is synonymous with STOP
+    depths: Vec<(bool, u32)>,
     zs: Vec<(Complex, Complex)>,
     colors: Vec<u8>,
 }
@@ -54,14 +54,13 @@ impl Wasmbrot {
             let (in_set, point_depth) = &mut self.depths[idx];
 
             if *in_set {
-                let (z, c) = &mut self.zs[idx];
+                *point_depth += 1;
 
+                let (z, c) = &mut self.zs[idx];
                 *z = *z * *z + *c;
 
-                if z.abs_sqr() > 4.0 {
+                if z.abs_square() > 4.0 {
                     *in_set = false;
-                } else {
-                    *point_depth += 1;
                 }
             }
         }
@@ -69,13 +68,21 @@ impl Wasmbrot {
 
     pub fn colorize(&mut self) {
         for idx in 0..(self.width * self.height) {
-            let (_, point_depth) = &self.depths[idx];
+            let &(in_set, point_depth) = &self.depths[idx];
 
-            let grey = (*point_depth as f32 / self.depth as f32).powf(1.0);
+            let (red, gre, blu) = if in_set {
+                (0.0, 0.0, 0.0)
+            } else {
+                let hue = point_depth as f32;
+                let sat = 1.0;
+                let lum = (point_depth as f32 / self.depth as f32).sqrt();
 
-            self.colors[4 * idx] = (grey * 255.0) as u8;
-            self.colors[4 * idx + 1] = (grey * 255.0) as u8;
-            self.colors[4 * idx + 2] = (grey * 255.0) as u8;
+                hsl_to_rgb(hue, sat, lum)
+            };
+
+            self.colors[4 * idx] = (red * 255.0) as u8;
+            self.colors[4 * idx + 1] = (gre * 255.0) as u8;
+            self.colors[4 * idx + 2] = (blu * 255.0) as u8;
             self.colors[4 * idx + 3] = 255;
         }
     }
@@ -89,6 +96,26 @@ impl Wasmbrot {
     }
 }
 
+fn hsl_to_rgb(hue: f32, saturation: f32, luminance: f32) -> (f32, f32, f32) {
+    let chroma = (1.0 - (2.0 * luminance - 1.0).abs()) * saturation;
+    let hue_cube_side = hue / 60.0;
+    let second_largest = chroma * (1.0 - (hue_cube_side % 2.0 - 1.0).abs());
+
+    let (red_axis, green_axis, blue_axis) = match hue_cube_side.ceil() as u8 {
+        0..=1 => (chroma, second_largest, 0.0),
+        2 => (second_largest, chroma, 0.0),
+        3 => (0.0, chroma, second_largest),
+        4 => (0.0, second_largest, chroma),
+        5 => (second_largest, 0.0, chroma),
+        6 => (chroma, 0.0, second_largest),
+        _ => (0.0, 0.0, 0.0),
+    };
+
+    let m = luminance - chroma / 2.0;
+
+    (red_axis + m, green_axis + m, blue_axis + m)
+}
+
 #[derive(Clone, Copy)]
 struct Complex {
     real: f32,
@@ -100,7 +127,7 @@ impl Complex {
         Complex { real, imag }
     }
 
-    fn abs_sqr(&self) -> f32 {
+    fn abs_square(&self) -> f32 {
         self.real * self.real + self.imag * self.imag
     }
 }
@@ -116,30 +143,30 @@ impl std::ops::Add for Complex {
     }
 }
 
-// impl std::ops::AddAssign for Complex {
-//     fn add_assign(&mut self, rhs: Complex) {
-//         self.real += rhs.real;
-//         self.imag += rhs.imag;
-//     }
-// }
-//
-// impl std::ops::Sub for Complex {
-//     type Output = Complex;
-//
-//     fn sub(self, rhs: Complex) -> Self::Output {
-//         Complex {
-//             real: self.real - rhs.real,
-//             imag: self.imag - rhs.imag,
-//         }
-//     }
-// }
-//
-// impl std::ops::SubAssign for Complex {
-//     fn sub_assign(&mut self, rhs: Complex) {
-//         self.real -= rhs.real;
-//         self.imag -= rhs.imag;
-//     }
-// }
+impl std::ops::AddAssign for Complex {
+    fn add_assign(&mut self, rhs: Complex) {
+        self.real += rhs.real;
+        self.imag += rhs.imag;
+    }
+}
+
+impl std::ops::Sub for Complex {
+    type Output = Complex;
+
+    fn sub(self, rhs: Complex) -> Self::Output {
+        Complex {
+            real: self.real - rhs.real,
+            imag: self.imag - rhs.imag,
+        }
+    }
+}
+
+impl std::ops::SubAssign for Complex {
+    fn sub_assign(&mut self, rhs: Complex) {
+        self.real -= rhs.real;
+        self.imag -= rhs.imag;
+    }
+}
 
 impl std::ops::Mul for Complex {
     type Output = Complex;
@@ -152,33 +179,33 @@ impl std::ops::Mul for Complex {
     }
 }
 
-// impl std::ops::MulAssign for Complex {
-//     fn mul_assign(&mut self, rhs: Complex) {
-//         let real = self.real * rhs.real - self.imag * rhs.imag;
-//         let imag = self.real * rhs.imag + self.imag * rhs.real;
-//         self.real = real;
-//         self.imag = imag;
-//     }
-// }
-//
-// impl std::ops::Div for Complex {
-//     type Output = Complex;
-//
-//     fn div(self, rhs: Complex) -> Self::Output {
-//         let denom = rhs.real * rhs.real + rhs.imag * rhs.imag;
-//         Complex {
-//             real: (self.real * rhs.real + self.imag * rhs.imag) / denom,
-//             imag: (self.imag * rhs.real - self.real * rhs.imag) / denom,
-//         }
-//     }
-// }
-//
-// impl std::ops::DivAssign for Complex {
-//     fn div_assign(&mut self, rhs: Complex) {
-//         let denom = rhs.real * rhs.real + rhs.imag * rhs.imag;
-//         let real = (self.real * rhs.real + self.imag * rhs.imag) / denom;
-//         let imag = (self.imag * rhs.real - self.real * rhs.imag) / denom;
-//         self.real = real;
-//         self.imag = imag;
-//     }
-// }
+impl std::ops::MulAssign for Complex {
+    fn mul_assign(&mut self, rhs: Complex) {
+        let real = self.real * rhs.real - self.imag * rhs.imag;
+        let imag = self.real * rhs.imag + self.imag * rhs.real;
+        self.real = real;
+        self.imag = imag;
+    }
+}
+
+impl std::ops::Div for Complex {
+    type Output = Complex;
+
+    fn div(self, rhs: Complex) -> Self::Output {
+        let denom = rhs.real * rhs.real + rhs.imag * rhs.imag;
+        Complex {
+            real: (self.real * rhs.real + self.imag * rhs.imag) / denom,
+            imag: (self.imag * rhs.real - self.real * rhs.imag) / denom,
+        }
+    }
+}
+
+impl std::ops::DivAssign for Complex {
+    fn div_assign(&mut self, rhs: Complex) {
+        let denom = rhs.real * rhs.real + rhs.imag * rhs.imag;
+        let real = (self.real * rhs.real + self.imag * rhs.imag) / denom;
+        let imag = (self.imag * rhs.real - self.real * rhs.imag) / denom;
+        self.real = real;
+        self.imag = imag;
+    }
+}
