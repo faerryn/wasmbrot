@@ -1,0 +1,15 @@
+{
+  "name": "wasmbrot",
+  "collaborators": [
+    "Jiang Meng Liao <alexandre.liao@gmail.com>"
+  ],
+  "version": "0.1.0",
+  "files": [
+    "wasmbrot_bg.wasm",
+    "wasmbrot.js",
+    "wasmbrot.d.ts"
+  ],
+  "module": "wasmbrot.js",
+  "types": "wasmbrot.d.ts",
+  "sideEffects": false
+}
