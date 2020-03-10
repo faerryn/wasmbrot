@@ -16,8 +16,6 @@
       "use strict";
 
       import init, { Wasmbrot } from "./pkg/wasmbrot.js";
-      import * as wasm from "./pkg/wasmbrot.js";
-      console.log(wasm);
 
       async function run() {
         const ctx = canvas.getContext("2d");
@@ -27,7 +25,7 @@
 
         const { memory } = await init();
 
-        const wasmbrot = Wasmbrot.new(width, height, 0.0, 0.0, Math.sqrt(2.0));
+        const wasmbrot = Wasmbrot.new(width, height, 0.0, 0.0, 2.0);
 
         const colorsPtr = wasmbrot.colors();
         const colors = new Uint8ClampedArray(

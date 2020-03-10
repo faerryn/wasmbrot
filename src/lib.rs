@@ -21,9 +21,9 @@ pub struct Wasmbrot {
 #[wasm_bindgen]
 impl Wasmbrot {
     pub fn new(width: usize, height: usize, center_x: f32, center_y: f32, scale: f32) -> Wasmbrot {
-        let scale = scale * 2.0 / width.min(height) as f32;
-        let left = center_x - scale * width as f32 / 2.0;
-        let top = center_y + scale * height as f32 / 2.0;
+        let pixel_size = scale * 2.0 / width.min(height) as f32;
+        let left = center_x - pixel_size * width as f32 / 2.0;
+        let top = center_y + pixel_size * height as f32 / 2.0;
 
         Wasmbrot {
             width,
@@ -35,8 +35,8 @@ impl Wasmbrot {
                     let row = idx / width;
                     let col = idx % width;
 
-                    let x = left + col as f32 * scale;
-                    let y = top - row as f32 * scale;
+                    let x = left + col as f32 * pixel_size;
+                    let y = top - row as f32 * pixel_size;
 
                     let point = Complex::new(x, y);
 
@@ -54,13 +54,13 @@ impl Wasmbrot {
             let (in_set, point_depth) = &mut self.depths[idx];
 
             if *in_set {
-                *point_depth += 1;
-
                 let (z, c) = &mut self.zs[idx];
-                *z = *z * *z + *c;
 
                 if z.abs_square() > 4.0 {
                     *in_set = false;
+                } else {
+                    *z = *z * *z + *c;
+                    *point_depth += 1;
                 }
             }
         }
