@@ -15,7 +15,7 @@ const overlayHeight = height / zoom;
 
 const workerLen = Math.max(window.navigator.hardwareConcurrency - 1, 1);
 
-const stepSize = 1;
+const stepSize = 32;
 
 function View(x, y, scale) {
   this.x = x;
