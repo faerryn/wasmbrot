@@ -36,13 +36,13 @@ export class Wasmbrot {
     /**
     * @param {number} width
     * @param {number} height
-    * @param {number} center_x
-    * @param {number} center_y
-    * @param {number} scale
+    * @param {number} left
+    * @param {number} top
+    * @param {number} pixel_size
     * @returns {Wasmbrot}
     */
-    static new(width, height, center_x, center_y, scale) {
-        var ret = wasm.wasmbrot_new(width, height, center_x, center_y, scale);
+    static bounds(width, height, left, top, pixel_size) {
+        var ret = wasm.wasmbrot_bounds(width, height, left, top, pixel_size);
         return Wasmbrot.__wrap(ret);
     }
     /**

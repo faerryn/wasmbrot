@@ -7,59 +7,13 @@
       body {
         margin: 0;
         overflow: hidden;
-        background-color: black;
+      }
+      canvas {
+        display: block;
       }
     </style>
   </head>
   <body>
-    <canvas id="canvas"></canvas>
-    <script type="module">
-      "use strict";
-
-      const canvas = document.getElementById("canvas");
-      const ctx = canvas.getContext("2d");
-
-      const width = (canvas.width = window.innerWidth);
-      const height = (canvas.height = window.innerHeight);
-
-      const step_size = 1024;
-
-      import init, { Wasmbrot } from "./wasmbrot.js";
-
-      async function run() {
-        const { memory } = await init();
-
-        const wasmbrot = Wasmbrot.new(width, height, 0.0, 0.0, 2.0);
-
-        const colorsPtr = wasmbrot.colors();
-        const colors = new Uint8ClampedArray(
-          memory.buffer,
-          colorsPtr,
-          4 * width * height
-        );
-        const image = new ImageData(colors, width);
-
-        ctx.font = "50px Arial";
-        ctx.fillStyle = "white";
-
-        wasmbrot.colorize();
-        ctx.putImageData(image, 0, 0);
-
-        function draw() {
-          wasmbrot.step(step_size);
-
-          wasmbrot.colorize();
-          ctx.putImageData(image, 0, 0);
-
-          ctx.fillText(`${wasmbrot.depth()}`, 10, 50);
-
-          window.requestAnimationFrame(draw);
-        }
-
-        window.requestAnimationFrame(draw);
-      }
-
-      run();
-    </script>
+    <script type="module" src="index.js"></script>
   </body>
 </html>
