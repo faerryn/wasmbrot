@@ -7,6 +7,7 @@
       body {
         margin: 0;
         overflow: hidden;
+        background-color: black;
       }
     </style>
   </head>
@@ -20,6 +21,8 @@
 
       const width = (canvas.width = window.innerWidth);
       const height = (canvas.height = window.innerHeight);
+
+      const step_size = 1024;
 
       import init, { Wasmbrot } from "./wasmbrot.js";
 
@@ -36,11 +39,20 @@
         );
         const image = new ImageData(colors, width);
 
+        ctx.font = "50px Arial";
+        ctx.fillStyle = "white";
+
+        wasmbrot.colorize();
+        ctx.putImageData(image, 0, 0);
+
         function draw() {
+          wasmbrot.step(step_size);
+
           wasmbrot.colorize();
           ctx.putImageData(image, 0, 0);
 
-          wasmbrot.tick();
+          ctx.fillText(`${wasmbrot.depth()}`, 10, 50);
+
           window.requestAnimationFrame(draw);
         }
 

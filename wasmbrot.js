@@ -46,9 +46,10 @@ export class Wasmbrot {
         return Wasmbrot.__wrap(ret);
     }
     /**
+    * @param {number} step_size
     */
-    tick() {
-        wasm.wasmbrot_tick(this.ptr);
+    step(step_size) {
+        wasm.wasmbrot_step(this.ptr, step_size);
     }
     /**
     */
@@ -67,6 +68,41 @@ export class Wasmbrot {
     */
     colors() {
         var ret = wasm.wasmbrot_colors(this.ptr);
+        return ret;
+    }
+    /**
+    * @returns {number}
+    */
+    left() {
+        var ret = wasm.wasmbrot_left(this.ptr);
+        return ret;
+    }
+    /**
+    * @returns {number}
+    */
+    right() {
+        var ret = wasm.wasmbrot_right(this.ptr);
+        return ret;
+    }
+    /**
+    * @returns {number}
+    */
+    top() {
+        var ret = wasm.wasmbrot_top(this.ptr);
+        return ret;
+    }
+    /**
+    * @returns {number}
+    */
+    down() {
+        var ret = wasm.wasmbrot_down(this.ptr);
+        return ret;
+    }
+    /**
+    * @returns {number}
+    */
+    pixel_size() {
+        var ret = wasm.wasmbrot_pixel_size(this.ptr);
         return ret;
     }
 }

@@ -55,44 +55,47 @@ impl Wasmbrot {
         }
     }
 
-    pub fn tick(&mut self) {
-        self.depth += 1;
+    pub fn step(&mut self, step_size: u32) {
+        self.depth += step_size;
 
-        for idx in 0..(self.width * self.height) {
+        'pixels: for idx in 0..(self.width * self.height) {
             let in_set = &mut self.in_set[idx];
 
             if *in_set {
                 let z = &mut self.zs[idx];
 
-                if z.abs_square() > 4.0 {
-                    *in_set = false;
-                } else {
-                    z.square();
-                    *z += &self.cs[idx];
+                for partial_step in 1..=step_size {
+                    z.mut_square_add(&self.cs[idx]);
 
-                    self.depths[idx] += 1;
+                    if z.modulus_squared() > 4.0 {
+                        self.depths[idx] += partial_step;
+                        *in_set = false;
+                        continue 'pixels;
+                    }
                 }
+
+                self.depths[idx] += step_size;
             }
         }
     }
 
     pub fn colorize(&mut self) {
         for idx in 0..(self.width * self.height) {
-            let point_depth = self.depths[idx];
-
             let (red, gre, blu) = if self.in_set[idx] {
-                (0.0, 0.0, 0.0)
+                (0, 0, 0)
             } else {
-                let hue = point_depth as f32;
+                let point_depth = self.depths[idx] as f32;
+
+                let hue = point_depth;
                 let sat = 1.0;
-                let lum = (point_depth as f32 / self.depth as f32).sqrt();
+                let lum = point_depth / self.depth as f32;
 
                 hsl_to_rgb(hue, sat, lum)
             };
 
-            self.colors[4 * idx] = (red * 255.0) as u8;
-            self.colors[4 * idx + 1] = (gre * 255.0) as u8;
-            self.colors[4 * idx + 2] = (blu * 255.0) as u8;
+            self.colors[4 * idx] = red;
+            self.colors[4 * idx + 1] = gre;
+            self.colors[4 * idx + 2] = blu;
             self.colors[4 * idx + 3] = 255;
         }
     }
@@ -104,9 +107,29 @@ impl Wasmbrot {
     pub fn colors(&self) -> *const u8 {
         self.colors.as_ptr()
     }
+
+    pub fn left(&self) -> f32 {
+        self.left
+    }
+
+    pub fn right(&self) -> f32 {
+        self.right
+    }
+
+    pub fn top(&self) -> f32 {
+        self.top
+    }
+
+    pub fn down(&self) -> f32 {
+        self.down
+    }
+
+    pub fn pixel_size(&self) -> f32 {
+        self.pixel_size
+    }
 }
 
-fn hsl_to_rgb(hue: f32, saturation: f32, luminance: f32) -> (f32, f32, f32) {
+fn hsl_to_rgb(hue: f32, saturation: f32, luminance: f32) -> (u8, u8, u8) {
     let chroma = (1.0 - (2.0 * luminance - 1.0).abs()) * saturation;
     let hue_cube_side = hue / 60.0;
     let second_largest = chroma * (1.0 - (hue_cube_side % 2.0 - 1.0).abs());
@@ -123,7 +146,11 @@ fn hsl_to_rgb(hue: f32, saturation: f32, luminance: f32) -> (f32, f32, f32) {
 
     let m = luminance - chroma / 2.0;
 
-    (red_axis + m, green_axis + m, blue_axis + m)
+    (
+        ((red_axis + m) * 255.0).round() as u8,
+        ((green_axis + m) * 255.0).round() as u8,
+        ((blue_axis + m) * 255.0).round() as u8,
+    )
 }
 
 #[derive(Clone)]
@@ -137,21 +164,16 @@ impl Complex {
         Complex { real, imag }
     }
 
-    fn abs_square(&self) -> f32 {
+    #[inline(always)]
+    fn modulus_squared(&self) -> f32 {
         self.real * self.real + self.imag * self.imag
     }
 
-    fn square(&mut self) {
-        let real = self.real * self.real - self.imag * self.imag;
-        let imag = 2.0 * (self.real * self.imag);
+    #[inline(always)]
+    fn mut_square_add(&mut self, c: &Complex) {
+        let real = self.real * self.real - self.imag * self.imag + c.real;
+        let imag = 2.0 * (self.real * self.imag) + c.imag;
         self.real = real;
         self.imag = imag;
-    }
-}
-
-impl std::ops::AddAssign<&Complex> for Complex {
-    fn add_assign(&mut self, rhs: &Complex) {
-        self.real += rhs.real;
-        self.imag += rhs.imag;
     }
 }
