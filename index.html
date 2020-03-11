@@ -15,14 +15,15 @@
     <script type="module">
       "use strict";
 
+      const canvas = document.getElementById("canvas");
+      const ctx = canvas.getContext("2d");
+
+      const width = (canvas.width = window.innerWidth);
+      const height = (canvas.height = window.innerHeight);
+
       import init, { Wasmbrot } from "./wasmbrot.js";
 
       async function run() {
-        const ctx = canvas.getContext("2d");
-
-        const width = (canvas.width = window.innerWidth);
-        const height = (canvas.height = window.innerHeight);
-
         const { memory } = await init();
 
         const wasmbrot = Wasmbrot.new(width, height, 0.0, 0.0, 2.0);
@@ -33,15 +34,13 @@
           colorsPtr,
           4 * width * height
         );
-
         const image = new ImageData(colors, width);
 
         function draw() {
-          wasmbrot.tick();
-
           wasmbrot.colorize();
           ctx.putImageData(image, 0, 0);
 
+          wasmbrot.tick();
           window.requestAnimationFrame(draw);
         }
 
