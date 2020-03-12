@@ -13,8 +13,8 @@ const overlayCtx = overlay.getContext("2d");
 const overlayWidth = width / zoom;
 const overlayHeight = height / zoom;
 
-const canvasRows = Math.floor(width / 400);
-const canvasCols = Math.floor(height / 400);
+const canvasRows = Math.floor(height / 400);
+const canvasCols = Math.floor(width / 400);
 const workerLen = canvasRows * canvasCols;
 
 const stepSize = 32;

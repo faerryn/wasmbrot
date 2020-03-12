@@ -1,19 +1,15 @@
+use num::*;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
 pub struct Wasmbrot {
     width: usize,
     height: usize,
-    left: f64,
-    right: f64,
-    top: f64,
-    down: f64,
-    pixel_size: f64,
     depth: u32,
     depths: Vec<u32>,
     in_set: Vec<bool>,
-    zs: Vec<Complex>,
-    cs: Vec<Complex>,
+    zs: Vec<Complex<f64>>,
+    cs: Vec<Complex<f64>>,
     colors: Vec<u8>,
 }
 
@@ -23,15 +19,10 @@ impl Wasmbrot {
         Wasmbrot {
             width,
             height,
-            left,
-            right: left + width as f64 * pixel_size,
-            top,
-            down: top - height as f64 * pixel_size,
-            pixel_size,
             depth: 0,
             depths: vec![0; width * height],
             in_set: vec![true; width * height],
-            zs: vec![Complex::new(0.0, 0.0); width * height],
+            zs: vec![Complex::zero(); width * height],
             cs: (0..width * height)
                 .map(|idx| {
                     let row = idx / width;
@@ -47,6 +38,19 @@ impl Wasmbrot {
         }
     }
 
+    pub fn view(
+        width: usize,
+        height: usize,
+        xnum: String,
+        xden: String,
+        ynum: String,
+        yden: String,
+        snum: String,
+        sdenum: String,
+    ) -> Wasmbrot {
+        unimplemented!()
+    }
+
     pub fn recycle(
         width: usize,
         height: usize,
@@ -60,7 +64,7 @@ impl Wasmbrot {
         old.in_set.clear();
         old.in_set.resize(width * height, true);
         old.zs.clear();
-        old.zs.resize(width * height, Complex::new(0.0, 0.0));
+        old.zs.resize(width * height, Complex::zero());
         old.colors.resize(4 * width * height, 0);
 
         old.cs.clear();
@@ -79,11 +83,6 @@ impl Wasmbrot {
         Wasmbrot {
             width,
             height,
-            left,
-            right: left + width as f64 * pixel_size,
-            top,
-            down: top - height as f64 * pixel_size,
-            pixel_size,
             depth: 0,
             depths: old.depths,
             in_set: old.in_set,
@@ -108,18 +107,15 @@ impl Wasmbrot {
                 let z = &mut self.zs[idx];
 
                 for _ in 0..step_size {
-                    let real_squared = z.real * z.real;
-                    let imag_squared = z.imag * z.imag;
-
-                    if real_squared + imag_squared > 4.0 {
+                    if z.norm_sqr() > 4.0 {
                         *in_set = false;
                         continue 'pixels;
                     }
 
                     self.depths[idx] += 1;
 
-                    z.imag = 2.0 * z.real * z.imag + c.imag;
-                    z.real = real_squared - imag_squared + c.real;
+                    *z *= *z;
+                    *z += *c;
                 }
             }
         }
@@ -162,38 +158,5 @@ impl Wasmbrot {
 
     pub fn colors(&self) -> *const u8 {
         self.colors.as_ptr()
-    }
-
-    pub fn left(&self) -> f64 {
-        self.left
-    }
-
-    pub fn right(&self) -> f64 {
-        self.right
-    }
-
-    pub fn top(&self) -> f64 {
-        self.top
-    }
-
-    pub fn down(&self) -> f64 {
-        self.down
-    }
-
-    pub fn pixel_size(&self) -> f64 {
-        self.pixel_size
-    }
-}
-
-#[derive(Clone)]
-struct Complex {
-    real: f64,
-    imag: f64,
-}
-
-impl Complex {
-    #[inline(always)]
-    fn new(real: f64, imag: f64) -> Complex {
-        Complex { real, imag }
     }
 }
