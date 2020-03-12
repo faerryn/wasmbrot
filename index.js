@@ -20,7 +20,7 @@ let maxDwell = Infinity;
 let canvases = [];
 let workers = [];
 
-let workersReady = false;
+let workersReceivedCanvas = false;
 (window.onpopstate = function() {
   const params = new URL(document.location).searchParams;
 
@@ -65,9 +65,10 @@ let workersReady = false;
 
   view = new View(x, y, scale);
 
-  stepSize = parseInt(params.get("stepSize"));
-  if (isNaN(stepSize)) {
-    stepSize = 16;
+  try {
+    stepSize = BigInt(params.get("stepSize"));
+  } catch (e) {
+    stepSize = 16n;
   }
 
   canvasRows = parseInt(params.get("canvasRows"));
@@ -90,10 +91,10 @@ let workersReady = false;
     maxDwell = Infinity;
   }
 
-  if (workersReady) {
-    setup();
+  if (workersReceivedCanvas) {
+    reparam();
   }
-})();
+})(); // run this function now!
 
 const overlay = document.getElementById("overlay");
 overlay.width = width;
@@ -118,6 +119,7 @@ for (let row = 0; row < canvasRows; row += 1) {
     const canvasWidth =
       Math.round((width / canvasCols) * (col + 1)) -
       Math.round((width / canvasCols) * col);
+
     const canvasHeight =
       Math.round((height / canvasRows) * (row + 1)) -
       Math.round((height / canvasRows) * row);
@@ -136,13 +138,14 @@ for (let row = 0; row < canvasRows; row += 1) {
     worker.onmessage = function(msg) {
       notReady -= 1;
       if (notReady === 0) {
-        setup();
+        // all workers ready, reparam!
+        reparam();
       }
     };
   }
 }
 
-function setup() {
+function reparam() {
   for (let i = 0; i < workerLen; i += 1) {
     const canvas = canvases[i];
     const worker = workers[i];
@@ -157,7 +160,7 @@ function setup() {
 
     worker.postMessage(
       {
-        canvas: !workersReady ? canvas : undefined,
+        canvas: !workersReceivedCanvas ? canvas : undefined,
         multi,
         burning,
         juliaRe: isNaN(juliaRe) ? null : juliaRe,
@@ -171,11 +174,11 @@ function setup() {
         maxDwell,
         colorDist
       },
-      !workersReady ? [canvas] : []
+      !workersReceivedCanvas ? [canvas] : []
     );
   }
 
-  workersReady = true;
+  workersReceivedCanvas = true;
 }
 
 overlay.onclick = function(e) {
@@ -196,7 +199,7 @@ overlay.onclick = function(e) {
     `?${new URLSearchParams(currentState()).toString()}`
   );
 
-  setup();
+  reparam();
 };
 
 let vanishPreview;

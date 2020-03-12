@@ -1,18 +1,11 @@
 "use strict";
 
-onmessage = function(msg) {
-  console.log("Worker not ready yet!");
-};
-
 import init, { Wasmbrot } from "./wasmbrot.js";
 
 let memory = null;
-let canvas = null;
-let ctx;
+let ctx = null;
 let wasmbrot;
 let image;
-let width;
-let height;
 let stepSize;
 let maxDwell;
 let colorDist;
@@ -40,14 +33,14 @@ onmessage = function(msg) {
     const escape = msg.data.escape;
 
     maxDwell = msg.data.maxDwell;
-    stepSize = BigInt(msg.data.stepSize);
+    stepSize = msg.data.stepSize;
     colorDist = msg.data.colorDist;
 
-    if (canvas === null) {
-      canvas = msg.data.canvas;
+    if (ctx === null) {
+      const canvas = msg.data.canvas;
       ctx = canvas.getContext("2d", { alpha: false });
-      width = canvas.width;
-      height = canvas.height;
+      const width = canvas.width;
+      const height = canvas.height;
       wasmbrot = Wasmbrot.new(
         multi,
         burning === 1,
@@ -81,14 +74,6 @@ onmessage = function(msg) {
         pixelWidth,
         pixelHeight
       );
-
-      const colorsPtr = wasmbrot.colors();
-      const colors = new Uint8ClampedArray(
-        memory.buffer,
-        colorsPtr,
-        4 * width * height
-      );
-      image = new ImageData(colors, width);
     }
 
     ctx.putImageData(image, 0, 0);
@@ -105,9 +90,7 @@ function draw() {
     ctx.putImageData(image, 0, 0);
   }
 
-  if (!result.all_known) {
-    setTimeout(function() {
-      requestAnimationFrame(draw);
-    }, 1000 / 60);
+  if (!result.all_known && wasmbrot.dwell() < maxDwell) {
+    requestAnimationFrame(draw);
   }
 }

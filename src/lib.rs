@@ -3,7 +3,7 @@ use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
 pub struct Wasmbrot {
-    multi: f64,
+    multi: Multi,
     burning: bool,
     julia_re: Option<f64>,
     julia_im: Option<f64>,
@@ -11,8 +11,7 @@ pub struct Wasmbrot {
     width: usize,
     height: usize,
     dwell: u64,
-    dwells: Vec<u64>,
-    pixel_states: Vec<PixelState>,
+    points: Vec<Point>,
     zs: Vec<Complex<f64>>,
     cs: Vec<Complex<f64>>,
     period_checks: Vec<PeriodCheck>,
@@ -58,6 +57,14 @@ impl Wasmbrot {
             colors.push(0xff);
         }
 
+        let multi = if multi == 2.0 {
+            Multi::Square
+        } else if multi == multi.trunc() {
+            Multi::Uint(multi as u32)
+        } else {
+            Multi::Float(multi)
+        };
+
         Wasmbrot {
             multi,
             burning,
@@ -67,8 +74,7 @@ impl Wasmbrot {
             width,
             height,
             dwell: 0,
-            dwells: vec![0; width * height],
-            pixel_states: vec![PixelState::Unknown; width * height],
+            points: vec![Point::Unknown(0); width * height],
             zs,
             cs,
             period_checks,
@@ -88,7 +94,14 @@ impl Wasmbrot {
         pixel_width: f64,
         pixel_height: f64,
     ) {
-        self.multi = multi;
+        self.multi = if multi == 2.0 {
+            Multi::Square
+        } else if multi == multi.trunc() {
+            Multi::Uint(multi as u32)
+        } else {
+            Multi::Float(multi)
+        };
+
         self.burning = burning;
         self.julia_re = julia_re;
         self.julia_im = julia_im;
@@ -96,9 +109,7 @@ impl Wasmbrot {
 
         self.dwell = 0;
         for idx in 0..self.width * self.height {
-            self.dwells[idx] = 0;
-
-            self.pixel_states[idx] = PixelState::Unknown;
+            self.points[idx] = Point::Unknown(0);
 
             self.colors[4 * idx] = 0;
             self.colors[4 * idx + 1] = 0;
@@ -124,54 +135,43 @@ impl Wasmbrot {
         let mut all_known = true;
         let mut new_colors = false;
 
-        let multi_style = if self.multi == 2.0 {
-            MultiStyle::Square
-        } else if self.multi == self.multi.trunc() {
-            MultiStyle::Uint(self.multi as u32)
-        } else {
-            MultiStyle::Float(self.multi)
-        };
-
         'pixels: for idx in 0..(self.width * self.height) {
-            if self.pixel_states[idx] != PixelState::Unknown {
-                // only compute unkown values
-                continue;
-            }
+            if let Point::Unknown(dwell) = &mut self.points[idx] {
+                all_known = false;
 
-            all_known = false;
+                let c = &self.cs[idx];
+                let z = &mut self.zs[idx];
+                let period_check = &mut self.period_checks[idx];
 
-            let c = &self.cs[idx];
-            let z = &mut self.zs[idx];
-            let period_check = &mut self.period_checks[idx];
+                for _ in 0..step_size {
+                    if self.burning {
+                        z.re = z.re.abs();
+                        z.im = z.im.abs();
+                    }
 
-            for _ in 0..step_size {
-                if self.burning {
-                    z.re = z.re.abs();
-                    z.im = z.im.abs();
-                }
+                    if z.norm_sqr() > self.escape * self.escape {
+                        self.points[idx] = Point::NotRendered(*dwell);
+                        new_colors = true;
+                        continue 'pixels;
+                    }
 
-                if z.norm_sqr() > self.escape * self.escape {
-                    self.pixel_states[idx] = PixelState::NotRendered;
-                    new_colors = true;
-                    continue 'pixels;
-                }
+                    *dwell += 1;
 
-                self.dwells[idx] += 1;
+                    match self.multi {
+                        Multi::Square => *z = *z * *z + c,
+                        Multi::Uint(multi) => *z = z.powu(multi) + c,
+                        Multi::Float(multi) => *z = z.powf(multi) + c,
+                    }
 
-                match multi_style {
-                    MultiStyle::Square => *z = *z * *z + c,
-                    MultiStyle::Uint(multi) => *z = z.powu(multi) + c,
-                    MultiStyle::Float(multi) => *z = z.powf(multi) + c,
-                }
+                    if *z == period_check.check_against {
+                        self.points[idx] = Point::InSet;
+                        continue 'pixels;
+                    }
 
-                if *z == period_check.check_against {
-                    self.pixel_states[idx] = PixelState::InSet;
-                    continue 'pixels;
-                }
-
-                if self.dwells[idx] > period_check.dwell_bounds {
-                    period_check.check_against = *z;
-                    period_check.dwell_bounds *= 2;
+                    if *dwell > period_check.dwell_bounds {
+                        period_check.check_against = *z;
+                        period_check.dwell_bounds *= 2;
+                    }
                 }
             }
         }
@@ -184,30 +184,27 @@ impl Wasmbrot {
 
     pub fn colorize(&mut self, color_dist: f64) {
         for idx in 0..self.width * self.height {
-            if self.pixel_states[idx] != PixelState::NotRendered {
-                // only render unrendered pixels
-                continue;
+            if let Point::NotRendered(dwell) = self.points[idx] {
+                self.points[idx] = Point::Rendered; // we just rendered it!
+
+                let dwell = dwell as f64 / color_dist;
+
+                let r = dwell.sin();
+                let r = r * r;
+                let r = (r * 255.0) as u8;
+
+                let g = (dwell + std::f64::consts::FRAC_PI_4).sin();
+                let g = g * g;
+                let g = (g * 255.0) as u8;
+
+                let b = (dwell + std::f64::consts::FRAC_PI_2).sin();
+                let b = b * b;
+                let b = (b * 255.0) as u8;
+
+                self.colors[4 * idx] = r;
+                self.colors[4 * idx + 1] = g;
+                self.colors[4 * idx + 2] = b;
             }
-
-            self.pixel_states[idx] = PixelState::Rendered;
-
-            let dwell = self.dwells[idx] as f64 / color_dist;
-
-            let r = dwell.sin();
-            let r = r * r;
-            let r = (r * 255.0) as u8;
-
-            let g = (dwell + std::f64::consts::FRAC_PI_4).sin();
-            let g = g * g;
-            let g = (g * 255.0) as u8;
-
-            let b = (dwell + std::f64::consts::FRAC_PI_2).sin();
-            let b = b * b;
-            let b = (b * 255.0) as u8;
-
-            self.colors[4 * idx] = r;
-            self.colors[4 * idx + 1] = g;
-            self.colors[4 * idx + 2] = b;
         }
     }
 
@@ -226,17 +223,17 @@ pub struct StepResult {
     pub new_colors: bool,
 }
 
-enum MultiStyle {
+enum Multi {
     Square,
     Uint(u32),
     Float(f64),
 }
 
 #[derive(Clone, PartialEq)]
-enum PixelState {
-    Unknown,
+enum Point {
+    Unknown(u64),
     InSet,
-    NotRendered,
+    NotRendered(u64),
     Rendered,
 }
 
