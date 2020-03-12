@@ -82,12 +82,18 @@ onmessage = function(msg) {
 };
 
 function draw() {
-  wasmbrot.step(stepSize); // only evaluate the step function if not stopped
-  wasmbrot.colorize();
+  const changed = wasmbrot.step(stepSize); // only evaluate the step function if not stopped
+  if (changed) {
+    wasmbrot.colorize();
 
-  ctx.putImageData(image, 0, 0);
+    ctx.putImageData(image, 0, 0);
 
-  if (wasmbrot.depth() < maxDepth) {
-    requestAnimationFrame(draw);
+    if (wasmbrot.depth() < maxDepth) {
+      requestAnimationFrame(draw);
+    } else {
+      stopped = true;
+    }
+  } else {
+    stopped = true;
   }
 }
