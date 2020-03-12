@@ -111,7 +111,7 @@ function setup(firstTime) {
   }
 }
 
-window.onclick = function(e) {
+overlay.onclick = function(e) {
   if (notReady > 0) {
     console.log(`${notReady} workers at not ready yet`);
   }
@@ -126,18 +126,17 @@ window.onclick = function(e) {
   setup(false);
 };
 
-window.onkeypress = function(e) {};
+let vanishPreview;
 
-let mouseX = 0;
-let mouseY = 0;
+overlay.onmousemove = function(e) {
+  if (vanishPreview !== undefined) {
+    clearTimeout(vanishPreview);
+  }
 
-window.onmousemove = function(e) {
-  mouseX = e.clientX;
-  mouseY = e.clientY;
   overlayCtx.clearRect(0, 0, width, height);
 
-  const row = clamp(mouseX, overlayWidth / 2, width - overlayWidth / 2);
-  const col = clamp(mouseY, overlayHeight / 2, height - overlayHeight / 2);
+  const row = clamp(e.x, overlayWidth / 2, width - overlayWidth / 2);
+  const col = clamp(e.y, overlayHeight / 2, height - overlayHeight / 2);
 
   const left = row - overlayWidth / 2;
   const top = col - overlayHeight / 2;
@@ -145,6 +144,10 @@ window.onmousemove = function(e) {
   overlayCtx.strokeStyle = "white";
 
   overlayCtx.strokeRect(left, top, overlayWidth, overlayHeight);
+
+  vanishPreview = setTimeout(function() {
+    overlayCtx.clearRect(0, 0, width, height);
+  }, 2000);
 };
 
 function clamp(x, min, max) {

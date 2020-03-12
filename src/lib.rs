@@ -95,6 +95,7 @@ impl Wasmbrot {
 
     pub fn step(&mut self, step_size: u32) -> bool {
         self.depth += step_size;
+
         let mut changed = false;
 
         'pixels: for idx in 0..(self.width * self.height) {
@@ -103,19 +104,23 @@ impl Wasmbrot {
             if *in_set {
                 changed = true;
 
+                let c = &self.cs[idx];
                 let z = &mut self.zs[idx];
 
-                for partial_step in 0..step_size {
-                    if z.modulus_squared() > 4.0 {
-                        self.depths[idx] += partial_step;
+                for _ in 0..step_size {
+                    let real_squared = z.real * z.real;
+                    let imag_squared = z.imag * z.imag;
+
+                    if real_squared + imag_squared > 4.0 {
                         *in_set = false;
                         continue 'pixels;
                     }
 
-                    z.mut_square_add(&self.cs[idx]);
-                }
+                    self.depths[idx] += 1;
 
-                self.depths[idx] += step_size;
+                    z.imag = 2.0 * z.real * z.imag + c.imag;
+                    z.real = real_squared - imag_squared + c.real;
+                }
             }
         }
 
@@ -180,24 +185,6 @@ impl Wasmbrot {
     }
 }
 
-// fn hsl_to_rgb(hue: f64, saturation: f64, luminance: f64) -> (f64, f64, f64) {
-//     let hue = hue % 360.0;
-//     let chroma = (1.0 - (2.0 * luminance - 1.0).abs()) * saturation;
-//     let cube_face = hue / 60.0;
-//     let secondary_chroma = chroma * (1.0 - (cube_face % 2.0 - 1.0).abs());
-//     let m = luminance - chroma / 2.0;
-//
-//     match cube_face as u32 {
-//         0 => (chroma + m, secondary_chroma + m, m),
-//         1 => (secondary_chroma + m, chroma + m, m),
-//         2 => (m, chroma + m, secondary_chroma + m),
-//         3 => (m, secondary_chroma + m, chroma + m),
-//         4 => (secondary_chroma + m, m, chroma + m),
-//         5 => (chroma + m, m, secondary_chroma + m),
-//         _ => (0.0, 0.0, 0.0),
-//     }
-// }
-
 #[derive(Clone)]
 struct Complex {
     real: f64,
@@ -208,18 +195,5 @@ impl Complex {
     #[inline(always)]
     fn new(real: f64, imag: f64) -> Complex {
         Complex { real, imag }
-    }
-
-    #[inline(always)]
-    fn modulus_squared(&self) -> f64 {
-        self.real * self.real + self.imag * self.imag
-    }
-
-    #[inline(always)]
-    fn mut_square_add(&mut self, c: &Complex) {
-        let real = self.real * self.real - self.imag * self.imag + c.real;
-        let imag = 2.0 * (self.real * self.imag) + c.imag;
-        self.real = real;
-        self.imag = imag;
     }
 }
