@@ -13,7 +13,9 @@ const overlayCtx = overlay.getContext("2d");
 const overlayWidth = width / zoom;
 const overlayHeight = height / zoom;
 
-const workerLen = Math.max(window.navigator.hardwareConcurrency - 1, 1);
+const canvasRows = Math.floor(width / 400);
+const canvasCols = Math.floor(height / 400);
+const workerLen = canvasRows * canvasCols;
 
 const stepSize = 32;
 
@@ -36,64 +38,76 @@ let canvases = [];
 let workers = [];
 let notReady = workerLen;
 
-for (let i = 0; i < workerLen; i += 1) {
-  const canvas = document.createElement("canvas");
-  document.body.appendChild(canvas);
+for (let row = 0; row < canvasRows; row += 1) {
+  for (let col = 0; col < canvasCols; col += 1) {
+    const canvas = document.createElement("canvas");
+    document.body.appendChild(canvas);
 
-  const canvasHeight =
-    Math.round((height / workerLen) * (i + 1)) -
-    Math.round((height / workerLen) * i);
+    const left = Math.round((width / canvasCols) * col);
+    const top = Math.round((height / canvasRows) * row);
+    canvas.style = `left: ${left}px; top: ${top}px;`;
 
-  canvas.width = width;
-  canvas.height = canvasHeight;
+    const canvasWidth =
+      Math.round((width / canvasCols) * (col + 1)) -
+      Math.round((width / canvasCols) * col);
+    const canvasHeight =
+      Math.round((height / canvasRows) * (row + 1)) -
+      Math.round((height / canvasRows) * row);
 
-  const offscreen = canvas.transferControlToOffscreen();
-  canvases.push(offscreen);
+    canvas.width = canvasWidth;
+    canvas.height = canvasHeight;
 
-  const worker = new Worker("worker.js", { type: "module" });
-  workers.push(worker);
+    const offscreen = canvas.transferControlToOffscreen();
+    canvases.push(offscreen);
 
-  worker.onmessage = function(msg) {
-    if (msg.data === "Ready") {
-      notReady -= 1;
-      if (notReady === 0) {
-        setup();
+    const worker = new Worker("worker.js", { type: "module" });
+    workers.push(worker);
+
+    worker.onmessage = function(msg) {
+      if (msg.data === "Ready") {
+        notReady -= 1;
+        if (notReady === 0) {
+          setup(true);
+        }
       }
-    }
-  };
-}
-
-function setup() {
-  for (let i = 0; i < workerLen; i += 1) {
-    const canvas = canvases[i];
-    const worker = workers[i];
-
-    worker.postMessage(
-      {
-        canvas,
-        left: view.left,
-        top: view.top - Math.round((height / workerLen) * i) * view.pixelSize,
-        pixelSize: view.pixelSize,
-        stepSize,
-        maxDepth
-      },
-      [canvas]
-    );
+    };
   }
 }
 
-function reset() {
+function setup(firstTime) {
   for (let i = 0; i < workerLen; i += 1) {
     const canvas = canvases[i];
     const worker = workers[i];
 
-    worker.postMessage({
-      left: view.left,
-      top: view.top - Math.round((height / workerLen) * i) * view.pixelSize,
-      pixelSize: view.pixelSize,
-      stepSize,
-      maxDepth
-    });
+    const row = Math.floor(i / canvasCols);
+    const col = i % canvasCols;
+
+    const left =
+      view.left + Math.round((width / canvasCols) * col) * view.pixelSize;
+    const top =
+      view.top - Math.round((height / canvasRows) * row) * view.pixelSize;
+
+    if (firstTime) {
+      worker.postMessage(
+        {
+          canvas,
+          left,
+          top,
+          pixelSize: view.pixelSize,
+          stepSize,
+          maxDepth
+        },
+        [canvas]
+      );
+    } else {
+      worker.postMessage({
+        left,
+        top,
+        pixelSize: view.pixelSize,
+        stepSize,
+        maxDepth
+      });
+    }
   }
 }
 
@@ -109,7 +123,7 @@ window.onclick = function(e) {
   const y = view.top - col * view.pixelSize;
   view = new View(x, y, view.scale / zoom);
 
-  reset();
+  setup(false);
 };
 
 window.onkeypress = function(e) {};
