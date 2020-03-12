@@ -7,4 +7,5 @@ wasm-pack (https://rustwasm.github.io/wasm-pack/installer/)
 
 # optional dev dependencies
 python3 (https://www.python.org/downloads/) or from your package manager
-  the `python3 -m http.server` works correctly (tested python 3.7.3 on Debian/Crostini)
+OR
+some other local server solution (so you can test your code on localhost!)
