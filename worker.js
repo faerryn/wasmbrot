@@ -13,7 +13,6 @@ let wasmbrot;
 let image;
 let width;
 let height;
-let stopped;
 let stepSize;
 let maxDwell;
 let colorDist;
@@ -51,7 +50,7 @@ onmessage = function(msg) {
       height = canvas.height;
       wasmbrot = Wasmbrot.new(
         multi,
-        burning,
+        burning === 1,
         juliaRe,
         juliaIm,
         escape,
@@ -70,13 +69,10 @@ onmessage = function(msg) {
         4 * width * height
       );
       image = new ImageData(colors, width);
-
-      stopped = false;
-      requestAnimationFrame(draw);
     } else {
       wasmbrot.reparam(
         multi,
-        burning,
+        burning === 1,
         juliaRe,
         juliaIm,
         escape,
@@ -93,30 +89,25 @@ onmessage = function(msg) {
         4 * width * height
       );
       image = new ImageData(colors, width);
-
-      if (stopped) {
-        stopped = false;
-        requestAnimationFrame(draw);
-      }
     }
+
+    ctx.putImageData(image, 0, 0);
+    requestAnimationFrame(draw);
   }
 };
 
 function draw() {
-  const changed = wasmbrot.step(stepSize); // only evaluate the step function if not stopped
-  if (changed) {
+  const result = wasmbrot.step(stepSize);
+
+  if (result.new_colors) {
     wasmbrot.colorize(colorDist);
 
     ctx.putImageData(image, 0, 0);
-
-    if (wasmbrot.dwell() < maxDwell) {
-      setTimeout(function() {
-        requestAnimationFrame(draw);
-      }, 1000 / 60);
-      return;
-    }
   }
 
-  // reaching here should stop
-  stopped = true;
+  if (!result.all_known) {
+    setTimeout(function() {
+      requestAnimationFrame(draw);
+    }, 1000 / 60);
+  }
 }

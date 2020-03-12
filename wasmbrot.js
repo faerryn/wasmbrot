@@ -34,6 +34,50 @@ function getInt32Memory0() {
 }
 /**
 */
+export class StepResult {
+
+    static __wrap(ptr) {
+        const obj = Object.create(StepResult.prototype);
+        obj.ptr = ptr;
+
+        return obj;
+    }
+
+    free() {
+        const ptr = this.ptr;
+        this.ptr = 0;
+
+        wasm.__wbg_stepresult_free(ptr);
+    }
+    /**
+    * @returns {boolean}
+    */
+    get all_known() {
+        var ret = wasm.__wbg_get_stepresult_all_known(this.ptr);
+        return ret !== 0;
+    }
+    /**
+    * @param {boolean} arg0
+    */
+    set all_known(arg0) {
+        wasm.__wbg_set_stepresult_all_known(this.ptr, arg0);
+    }
+    /**
+    * @returns {boolean}
+    */
+    get new_colors() {
+        var ret = wasm.__wbg_get_stepresult_new_colors(this.ptr);
+        return ret !== 0;
+    }
+    /**
+    * @param {boolean} arg0
+    */
+    set new_colors(arg0) {
+        wasm.__wbg_set_stepresult_new_colors(this.ptr, arg0);
+    }
+}
+/**
+*/
 export class Wasmbrot {
 
     static __wrap(ptr) {
@@ -83,14 +127,14 @@ export class Wasmbrot {
     }
     /**
     * @param {BigInt} step_size
-    * @returns {boolean}
+    * @returns {StepResult}
     */
     step(step_size) {
         uint64CvtShim[0] = step_size;
         const low0 = u32CvtShim[0];
         const high0 = u32CvtShim[1];
         var ret = wasm.wasmbrot_step(this.ptr, low0, high0);
-        return ret !== 0;
+        return StepResult.__wrap(ret);
     }
     /**
     * @param {number} color_dist

@@ -29,7 +29,10 @@ let workersReady = false;
     multi = 2;
   }
 
-  burning = (parseInt(params.get("burning")) === 1) | false;
+  burning = parseInt(params.get("burning"));
+  if (isNaN(burning)) {
+    burning = 0;
+  }
 
   juliaRe = parseFloat(params.get("juliaRe")); // we want these to be NaN if they are NaN
 
@@ -248,4 +251,3 @@ function View(x, y, scale) {
   this.left = x - (this.pixelSize * width) / 2;
   this.top = y + (this.pixelSize * height) / 2;
 }
-

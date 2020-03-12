@@ -48,7 +48,7 @@ impl Wasmbrot {
 
             let z = Complex::new(x, y);
             zs.push(z);
-            period_checks.push(PeriodCheck::new(z, 1));
+            period_checks.push(PeriodCheck::new(z));
 
             cs.push(Complex::new(julia_re.unwrap_or(x), julia_im.unwrap_or(y)));
 
@@ -112,16 +112,17 @@ impl Wasmbrot {
 
             let z = Complex::new(x, y);
             self.zs[idx] = z;
-            self.period_checks[idx] = PeriodCheck::new(z, 1);
+            self.period_checks[idx] = PeriodCheck::new(z);
 
             self.cs[idx] = Complex::new(self.julia_re.unwrap_or(x), self.julia_im.unwrap_or(y));
         }
     }
 
-    pub fn step(&mut self, step_size: u64) -> bool {
+    pub fn step(&mut self, step_size: u64) -> StepResult {
         self.dwell += step_size;
 
-        let mut changed = false;
+        let mut all_known = true;
+        let mut new_colors = false;
 
         let multi_style = if self.multi == 2.0 {
             MultiStyle::Square
@@ -137,7 +138,7 @@ impl Wasmbrot {
                 continue;
             }
 
-            changed = true;
+            all_known = false;
 
             let c = &self.cs[idx];
             let z = &mut self.zs[idx];
@@ -151,6 +152,7 @@ impl Wasmbrot {
 
                 if z.norm_sqr() > self.escape * self.escape {
                     self.pixel_states[idx] = PixelState::NotRendered;
+                    new_colors = true;
                     continue 'pixels;
                 }
 
@@ -174,7 +176,10 @@ impl Wasmbrot {
             }
         }
 
-        changed
+        StepResult {
+            all_known,
+            new_colors,
+        }
     }
 
     pub fn colorize(&mut self, color_dist: f64) {
@@ -215,6 +220,12 @@ impl Wasmbrot {
     }
 }
 
+#[wasm_bindgen]
+pub struct StepResult {
+    pub all_known: bool,
+    pub new_colors: bool,
+}
+
 enum MultiStyle {
     Square,
     Uint(u32),
@@ -236,10 +247,10 @@ struct PeriodCheck {
 }
 
 impl PeriodCheck {
-    fn new(check_against: Complex<f64>, dwell_bounds: u64) -> PeriodCheck {
+    fn new(check_against: Complex<f64>) -> PeriodCheck {
         PeriodCheck {
             check_against,
-            dwell_bounds,
+            dwell_bounds: 8,
         }
     }
 }
