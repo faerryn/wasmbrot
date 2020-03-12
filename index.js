@@ -126,7 +126,9 @@ for (let row = 0; row < canvasRows; row += 1) {
     const offscreen = canvas.transferControlToOffscreen();
     canvases.push(offscreen);
 
-    const worker = new Worker("worker.js", { type: "module" });
+    const worker = new Worker(`worker.js?random=${Math.random()}`, {
+      type: "module"
+    });
     workers.push(worker);
 
     worker.onmessage = function(msg) {
