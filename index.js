@@ -1,7 +1,86 @@
 "use strict";
-
 const width = window.innerWidth;
 const height = window.innerHeight;
+
+let multi;
+let burning;
+let juliaRe;
+let juliaIm;
+let escape;
+let colorDist;
+let view;
+let alreadySetup = false;
+
+(window.onpopstate = function() {
+  const params = new URL(document.location).searchParams;
+
+  multi = parseFloat(params.get("multi"));
+  if (isNaN(multi)) {
+    multi = 2;
+  }
+
+  burning = (parseInt(params.get("burning")) === 1) | false;
+
+  juliaRe = parseFloat(params.get("juliaRe"));
+
+  juliaIm = parseFloat(params.get("juliaIm"));
+
+  escape = parseFloat(params.get("escape"));
+  if (isNaN(escape)) {
+    escape = 2;
+  }
+
+  colorDist = parseFloat(params.get("colorDist"));
+  if (isNaN(colorDist)) {
+    colorDist = 10;
+  }
+
+  let x = parseFloat(params.get("x"));
+  if (isNaN(x)) {
+    x = 0;
+  }
+
+  let y = parseFloat(params.get("y"));
+  if (isNaN(y)) {
+    y = 0;
+  }
+
+  let scale = parseFloat(params.get("scale"));
+  if (isNaN(scale)) {
+    scale = 2;
+  }
+
+  view = new View(x, y, scale);
+
+  if (alreadySetup) {
+    setup();
+  }
+})();
+
+function currentState() {
+  return {
+    multi,
+    burning,
+    juliaRe,
+    juliaIm,
+    escape,
+    x: view.x,
+    y: view.y,
+    scale: view.scale,
+    colorDist
+  };
+}
+
+function View(x, y, scale) {
+  this.x = x;
+  this.y = y;
+  this.scale = scale;
+
+  this.pixelSize = (scale * 2) / Math.min(width, height);
+
+  this.left = x - (this.pixelSize * width) / 2;
+  this.top = y + (this.pixelSize * height) / 2;
+}
 
 const zoom = 5;
 
@@ -20,19 +99,6 @@ const workerLen = canvasRows * canvasCols;
 const stepSize = 32;
 
 const maxDepth = Infinity;
-
-function View(x, y, scale) {
-  this.x = x;
-  this.y = y;
-  this.scale = scale;
-
-  this.pixelSize = (scale * 2) / Math.min(width, height);
-
-  this.left = x - (this.pixelSize * width) / 2;
-  this.top = y + (this.pixelSize * height) / 2;
-}
-
-let view = new View(0.0, 0.0, 2.0);
 
 let canvases = [];
 let workers = [];
@@ -67,14 +133,14 @@ for (let row = 0; row < canvasRows; row += 1) {
       if (msg.data === "Ready") {
         notReady -= 1;
         if (notReady === 0) {
-          setup(true);
+          setup();
         }
       }
     };
   }
 }
 
-function setup(firstTime) {
+function setup() {
   for (let i = 0; i < workerLen; i += 1) {
     const canvas = canvases[i];
     const worker = workers[i];
@@ -87,28 +153,27 @@ function setup(firstTime) {
     const top =
       view.top - Math.round((height / canvasRows) * row) * view.pixelSize;
 
-    if (firstTime) {
-      worker.postMessage(
-        {
-          canvas,
-          left,
-          top,
-          pixelSize: view.pixelSize,
-          stepSize,
-          maxDepth
-        },
-        [canvas]
-      );
-    } else {
-      worker.postMessage({
+    worker.postMessage(
+      {
+        canvas: !alreadySetup ? canvas : undefined,
+        multi,
+        burning,
+        juliaRe: isNaN(juliaRe) ? null : juliaRe,
+        juliaIm: isNaN(juliaIm) ? null : juliaIm,
+        escape,
         left,
         top,
-        pixelSize: view.pixelSize,
+        pixelWidth: view.pixelSize,
+        pixelHeight: view.pixelSize,
         stepSize,
-        maxDepth
-      });
-    }
+        maxDepth,
+        colorDist
+      },
+      !alreadySetup ? [canvas] : []
+    );
   }
+
+  alreadySetup = true;
 }
 
 overlay.onclick = function(e) {
@@ -123,7 +188,13 @@ overlay.onclick = function(e) {
   const y = view.top - col * view.pixelSize;
   view = new View(x, y, view.scale / zoom);
 
-  setup(false);
+  window.history.pushState(
+    "",
+    "",
+    `?${new URLSearchParams(currentState()).toString()}`
+  );
+
+  setup();
 };
 
 let vanishPreview;

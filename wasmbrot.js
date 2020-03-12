@@ -17,66 +17,8 @@ function getStringFromWasm0(ptr, len) {
     return cachedTextDecoder.decode(getUint8Memory0().subarray(ptr, ptr + len));
 }
 
-let WASM_VECTOR_LEN = 0;
-
-let cachedTextEncoder = new TextEncoder('utf-8');
-
-const encodeString = (typeof cachedTextEncoder.encodeInto === 'function'
-    ? function (arg, view) {
-    return cachedTextEncoder.encodeInto(arg, view);
-}
-    : function (arg, view) {
-    const buf = cachedTextEncoder.encode(arg);
-    view.set(buf);
-    return {
-        read: arg.length,
-        written: buf.length
-    };
-});
-
-function passStringToWasm0(arg, malloc, realloc) {
-
-    if (realloc === undefined) {
-        const buf = cachedTextEncoder.encode(arg);
-        const ptr = malloc(buf.length);
-        getUint8Memory0().subarray(ptr, ptr + buf.length).set(buf);
-        WASM_VECTOR_LEN = buf.length;
-        return ptr;
-    }
-
-    let len = arg.length;
-    let ptr = malloc(len);
-
-    const mem = getUint8Memory0();
-
-    let offset = 0;
-
-    for (; offset < len; offset++) {
-        const code = arg.charCodeAt(offset);
-        if (code > 0x7F) break;
-        mem[ptr + offset] = code;
-    }
-
-    if (offset !== len) {
-        if (offset !== 0) {
-            arg = arg.slice(offset);
-        }
-        ptr = realloc(ptr, len, len = offset + arg.length * 3);
-        const view = getUint8Memory0().subarray(ptr + offset, ptr + len);
-        const ret = encodeString(arg, view);
-
-        offset += ret.written;
-    }
-
-    WASM_VECTOR_LEN = offset;
-    return ptr;
-}
-
-function _assertClass(instance, klass) {
-    if (!(instance instanceof klass)) {
-        throw new Error(`expected instance of ${klass.name}`);
-    }
-    return instance.ptr;
+function isLikeNone(x) {
+    return x === undefined || x === null;
 }
 /**
 */
@@ -96,59 +38,36 @@ export class Wasmbrot {
         wasm.__wbg_wasmbrot_free(ptr);
     }
     /**
+    * @param {number} multi
+    * @param {boolean} burning
+    * @param {number | undefined} julia_re
+    * @param {number | undefined} julia_im
+    * @param {number} escape
     * @param {number} width
     * @param {number} height
     * @param {number} left
     * @param {number} top
-    * @param {number} pixel_size
+    * @param {number} pixel_width
+    * @param {number} pixel_height
     * @returns {Wasmbrot}
     */
-    static bounds(width, height, left, top, pixel_size) {
-        var ret = wasm.wasmbrot_bounds(width, height, left, top, pixel_size);
+    static new(multi, burning, julia_re, julia_im, escape, width, height, left, top, pixel_width, pixel_height) {
+        var ret = wasm.wasmbrot_new(multi, burning, !isLikeNone(julia_re), isLikeNone(julia_re) ? 0 : julia_re, !isLikeNone(julia_im), isLikeNone(julia_im) ? 0 : julia_im, escape, width, height, left, top, pixel_width, pixel_height);
         return Wasmbrot.__wrap(ret);
     }
     /**
-    * @param {number} width
-    * @param {number} height
-    * @param {string} xnum
-    * @param {string} xden
-    * @param {string} ynum
-    * @param {string} yden
-    * @param {string} snum
-    * @param {string} sdenum
-    * @returns {Wasmbrot}
-    */
-    static view(width, height, xnum, xden, ynum, yden, snum, sdenum) {
-        var ptr0 = passStringToWasm0(xnum, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        var len0 = WASM_VECTOR_LEN;
-        var ptr1 = passStringToWasm0(xden, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        var len1 = WASM_VECTOR_LEN;
-        var ptr2 = passStringToWasm0(ynum, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        var len2 = WASM_VECTOR_LEN;
-        var ptr3 = passStringToWasm0(yden, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        var len3 = WASM_VECTOR_LEN;
-        var ptr4 = passStringToWasm0(snum, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        var len4 = WASM_VECTOR_LEN;
-        var ptr5 = passStringToWasm0(sdenum, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        var len5 = WASM_VECTOR_LEN;
-        var ret = wasm.wasmbrot_view(width, height, ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3, ptr4, len4, ptr5, len5);
-        return Wasmbrot.__wrap(ret);
-    }
-    /**
-    * @param {number} width
-    * @param {number} height
+    * @param {number} multi
+    * @param {boolean} burning
+    * @param {number | undefined} julia_re
+    * @param {number | undefined} julia_im
+    * @param {number} escape
     * @param {number} left
     * @param {number} top
-    * @param {number} pixel_size
-    * @param {Wasmbrot} old
-    * @returns {Wasmbrot}
+    * @param {number} pixel_width
+    * @param {number} pixel_height
     */
-    static recycle(width, height, left, top, pixel_size, old) {
-        _assertClass(old, Wasmbrot);
-        var ptr0 = old.ptr;
-        old.ptr = 0;
-        var ret = wasm.wasmbrot_recycle(width, height, left, top, pixel_size, ptr0);
-        return Wasmbrot.__wrap(ret);
+    reparam(multi, burning, julia_re, julia_im, escape, left, top, pixel_width, pixel_height) {
+        wasm.wasmbrot_reparam(this.ptr, multi, burning, !isLikeNone(julia_re), isLikeNone(julia_re) ? 0 : julia_re, !isLikeNone(julia_im), isLikeNone(julia_im) ? 0 : julia_im, escape, left, top, pixel_width, pixel_height);
     }
     /**
     * @param {number} step_size
@@ -159,9 +78,10 @@ export class Wasmbrot {
         return ret !== 0;
     }
     /**
+    * @param {number} color_dist
     */
-    colorize() {
-        wasm.wasmbrot_colorize(this.ptr);
+    colorize(color_dist) {
+        wasm.wasmbrot_colorize(this.ptr, color_dist);
     }
     /**
     * @returns {number}

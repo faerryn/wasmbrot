@@ -3,6 +3,11 @@ use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
 pub struct Wasmbrot {
+    multi: f64,
+    burning: bool,
+    julia_re: Option<f64>,
+    julia_im: Option<f64>,
+    escape: f64,
     width: usize,
     height: usize,
     depth: u32,
@@ -15,80 +20,95 @@ pub struct Wasmbrot {
 
 #[wasm_bindgen]
 impl Wasmbrot {
-    pub fn bounds(width: usize, height: usize, left: f64, top: f64, pixel_size: f64) -> Wasmbrot {
-        Wasmbrot {
-            width,
-            height,
-            depth: 0,
-            depths: vec![0; width * height],
-            in_set: vec![true; width * height],
-            zs: vec![Complex::zero(); width * height],
-            cs: (0..width * height)
-                .map(|idx| {
-                    let row = idx / width;
-                    let col = idx % width;
-
-                    let x = left + col as f64 * pixel_size;
-                    let y = top - row as f64 * pixel_size;
-
-                    Complex::new(x, y)
-                })
-                .collect(),
-            colors: vec![0; 4 * width * height],
-        }
-    }
-
-    pub fn view(
-        width: usize,
-        height: usize,
-        xnum: String,
-        xden: String,
-        ynum: String,
-        yden: String,
-        snum: String,
-        sdenum: String,
-    ) -> Wasmbrot {
-        unimplemented!()
-    }
-
-    pub fn recycle(
+    pub fn new(
+        multi: f64,
+        burning: bool,
+        julia_re: Option<f64>,
+        julia_im: Option<f64>,
+        escape: f64,
         width: usize,
         height: usize,
         left: f64,
         top: f64,
-        pixel_size: f64,
-        mut old: Wasmbrot,
+        pixel_width: f64,
+        pixel_height: f64,
     ) -> Wasmbrot {
-        old.depths.clear();
-        old.depths.resize(width * height, 0);
-        old.in_set.clear();
-        old.in_set.resize(width * height, true);
-        old.zs.clear();
-        old.zs.resize(width * height, Complex::zero());
-        old.colors.resize(4 * width * height, 0);
-
-        old.cs.clear();
-        old.cs.reserve(width * height - old.cs.len());
+        let mut zs = Vec::with_capacity(width * height);
+        let mut cs = Vec::with_capacity(width * height);
 
         for idx in 0..width * height {
             let row = idx / width;
             let col = idx % width;
 
-            let x = left + col as f64 * pixel_size;
-            let y = top - row as f64 * pixel_size;
+            let x = left + col as f64 * pixel_width;
+            let y = top - row as f64 * pixel_height;
 
-            old.cs.push(Complex::new(x, y));
+            let z = Complex::new(x, y);
+
+            zs.push(z);
+
+            let c = Complex::new(julia_re.unwrap_or(x), julia_im.unwrap_or(y));
+
+            cs.push(c);
         }
 
         Wasmbrot {
+            multi,
+            burning,
+            julia_re,
+            julia_im,
+            escape,
             width,
             height,
             depth: 0,
-            depths: old.depths,
-            in_set: old.in_set,
-            zs: old.zs,
-            cs: old.cs,
-            colors: old.colors,
+            depths: vec![0; width * height],
+            in_set: vec![true; width * height],
+            zs,
+            cs,
+            colors: vec![0; 4 * width * height],
+        }
+    }
+
+    pub fn reparam(
+        &mut self,
+        multi: f64,
+        burning: bool,
+        julia_re: Option<f64>,
+        julia_im: Option<f64>,
+        escape: f64,
+        left: f64,
+        top: f64,
+        pixel_width: f64,
+        pixel_height: f64,
+    ) {
+        self.multi = multi;
+        self.burning = burning;
+        self.julia_re = julia_re;
+        self.julia_im = julia_im;
+        self.escape = escape;
+
+        self.depth = 0;
+        for idx in 0..self.width * self.height {
+            self.depths[idx] = 0;
+            self.in_set[idx] = true;
+            self.colors[idx] = 0;
+            self.colors[idx + 1] = 0;
+            self.colors[idx + 2] = 0;
+            self.colors[idx + 3] = 0xff;
+
+            let row = idx / self.width;
+            let col = idx % self.width;
+
+            let x = left + col as f64 * pixel_width;
+            let y = top - row as f64 * pixel_height;
+
+            let z = Complex::new(x, y);
+
+            self.zs[idx] = z;
+
+            let c = Complex::new(self.julia_re.unwrap_or(x), self.julia_im.unwrap_or(y));
+
+            self.cs[idx] = c;
         }
     }
 
@@ -107,15 +127,23 @@ impl Wasmbrot {
                 let z = &mut self.zs[idx];
 
                 for _ in 0..step_size {
-                    if z.norm_sqr() > 4.0 {
+                    if z.norm_sqr() > self.escape * self.escape {
                         *in_set = false;
                         continue 'pixels;
                     }
 
                     self.depths[idx] += 1;
 
-                    *z *= *z;
-                    *z += *c;
+                    if self.burning {
+                        z.re = z.re.abs();
+                        z.im = z.im.abs();
+                    }
+
+                    if self.multi == self.multi.trunc() {
+                        *z = z.powu(self.multi as u32) + c;
+                    } else {
+                        *z = z.powf(self.multi) + c;
+                    }
                 }
             }
         }
@@ -123,12 +151,12 @@ impl Wasmbrot {
         changed
     }
 
-    pub fn colorize(&mut self) {
+    pub fn colorize(&mut self, color_dist: f64) {
         for idx in 0..self.width * self.height {
             let (r, g, b) = if self.in_set[idx] {
                 (0, 0, 0)
             } else {
-                let depth = self.depths[idx] as f64 / 10.0;
+                let depth = self.depths[idx] as f64 / color_dist;
 
                 let r = depth.sin();
                 let r = r * r;

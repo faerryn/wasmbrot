@@ -17,6 +17,7 @@ let height;
 let stopped;
 let stepSize;
 let maxDepth;
+let colorDist;
 
 async function run() {
   const wasm = await init();
@@ -32,17 +33,36 @@ onmessage = function(msg) {
   } else {
     const left = msg.data.left;
     const top = msg.data.top;
-    const pixelSize = msg.data.pixelSize;
+    const pixelWidth = msg.data.pixelWidth;
+    const pixelHeight = msg.data.pixelHeight;
+    const multi = msg.data.multi;
+    const burning = msg.data.burning;
+    const juliaRe = msg.data.juliaRe;
+    const juliaIm = msg.data.juliaIm;
+    const escape = msg.data.escape;
 
     maxDepth = msg.data.maxDepth;
     stepSize = msg.data.stepSize;
+    colorDist = msg.data.colorDist;
 
     if (!alreadySetup) {
       canvas = msg.data.canvas;
       ctx = canvas.getContext("2d");
       width = canvas.width;
       height = canvas.height;
-      wasmbrot = Wasmbrot.bounds(width, height, left, top, pixelSize);
+      wasmbrot = Wasmbrot.new(
+        multi,
+        burning,
+        juliaRe,
+        juliaIm,
+        escape,
+        width,
+        height,
+        left,
+        top,
+        pixelWidth,
+        pixelHeight
+      );
 
       const colorsPtr = wasmbrot.colors();
       const colors = new Uint8ClampedArray(
@@ -56,13 +76,16 @@ onmessage = function(msg) {
       requestAnimationFrame(draw);
       alreadySetup = true;
     } else {
-      wasmbrot = Wasmbrot.recycle(
-        width,
-        height,
+      wasmbrot.reparam(
+        multi,
+        burning,
+        juliaRe,
+        juliaIm,
+        escape,
         left,
         top,
-        pixelSize,
-        wasmbrot
+        pixelWidth,
+        pixelHeight
       );
 
       const colorsPtr = wasmbrot.colors();
@@ -84,7 +107,7 @@ onmessage = function(msg) {
 function draw() {
   const changed = wasmbrot.step(stepSize); // only evaluate the step function if not stopped
   if (changed) {
-    wasmbrot.colorize();
+    wasmbrot.colorize(colorDist);
 
     ctx.putImageData(image, 0, 0);
 
