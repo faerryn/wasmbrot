@@ -8,10 +8,15 @@ import init, { Wasmbrot } from "./wasmbrot.js";
 
 let memory = null;
 let canvas = null;
-let setup = false;
+let alreadySetup = false;
 let ctx;
 let wasmbrot;
 let image;
+let width;
+let height;
+let stopped;
+let stepSize;
+let maxDepth;
 
 async function run() {
   const wasm = await init();
@@ -28,40 +33,61 @@ onmessage = function(msg) {
     const left = msg.data.left;
     const top = msg.data.top;
     const pixelSize = msg.data.pixelSize;
-    const stepSize = msg.data.stepSize;
 
-    if (!setup) {
+    maxDepth = msg.data.maxDepth;
+    stepSize = msg.data.stepSize;
+
+    if (!alreadySetup) {
       canvas = msg.data.canvas;
       ctx = canvas.getContext("2d");
-    }
+      width = canvas.width;
+      height = canvas.height;
+      wasmbrot = Wasmbrot.bounds(width, height, left, top, pixelSize);
 
-    const width = canvas.width;
-    const height = canvas.height;
+      const colorsPtr = wasmbrot.colors();
+      const colors = new Uint8ClampedArray(
+        memory.buffer,
+        colorsPtr,
+        4 * width * height
+      );
+      image = new ImageData(colors, width);
 
-    wasmbrot = Wasmbrot.bounds(width, height, left, top, pixelSize);
-    const colorsPtr = wasmbrot.colors();
-    const colors = new Uint8ClampedArray(
-      memory.buffer,
-      colorsPtr,
-      4 * width * height
-    );
-    image = new ImageData(colors, width);
-
-    if (!setup) {
-      function draw() {
-        wasmbrot.step(stepSize);
-        wasmbrot.colorize();
-
-        ctx.putImageData(image, 0, 0);
-
-        setTimeout(function() {
-          requestAnimationFrame(draw);
-        }, wasmbrot.depth() / 128);
-      }
-
+      stopped = false;
       requestAnimationFrame(draw);
-    }
+      alreadySetup = true;
+    } else {
+      wasmbrot = Wasmbrot.recycle(
+        width,
+        height,
+        left,
+        top,
+        pixelSize,
+        wasmbrot
+      );
 
-    setup = true;
+      const colorsPtr = wasmbrot.colors();
+      const colors = new Uint8ClampedArray(
+        memory.buffer,
+        colorsPtr,
+        4 * width * height
+      );
+      image = new ImageData(colors, width);
+
+      if (stopped) {
+        stopped = false;
+        requestAnimationFrame(draw);
+      }
+    }
   }
 };
+
+function draw() {
+  wasmbrot.step(stepSize); // only evaluate the step function if not stopped
+  wasmbrot.colorize();
+
+  ctx.putImageData(image, 0, 0);
+
+  if (wasmbrot.depth() < maxDepth) {
+    requestAnimationFrame(draw);
+  }
+}

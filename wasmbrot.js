@@ -16,6 +16,13 @@ function getUint8Memory0() {
 function getStringFromWasm0(ptr, len) {
     return cachedTextDecoder.decode(getUint8Memory0().subarray(ptr, ptr + len));
 }
+
+function _assertClass(instance, klass) {
+    if (!(instance instanceof klass)) {
+        throw new Error(`expected instance of ${klass.name}`);
+    }
+    return instance.ptr;
+}
 /**
 */
 export class Wasmbrot {
@@ -46,10 +53,28 @@ export class Wasmbrot {
         return Wasmbrot.__wrap(ret);
     }
     /**
+    * @param {number} width
+    * @param {number} height
+    * @param {number} left
+    * @param {number} top
+    * @param {number} pixel_size
+    * @param {Wasmbrot} old
+    * @returns {Wasmbrot}
+    */
+    static recycle(width, height, left, top, pixel_size, old) {
+        _assertClass(old, Wasmbrot);
+        var ptr0 = old.ptr;
+        old.ptr = 0;
+        var ret = wasm.wasmbrot_recycle(width, height, left, top, pixel_size, ptr0);
+        return Wasmbrot.__wrap(ret);
+    }
+    /**
     * @param {number} step_size
+    * @returns {boolean}
     */
     step(step_size) {
-        wasm.wasmbrot_step(this.ptr, step_size);
+        var ret = wasm.wasmbrot_step(this.ptr, step_size);
+        return ret !== 0;
     }
     /**
     */

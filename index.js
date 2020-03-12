@@ -17,6 +17,8 @@ const workerLen = Math.max(window.navigator.hardwareConcurrency - 1, 1);
 
 const stepSize = 32;
 
+const maxDepth = Infinity;
+
 function View(x, y, scale) {
   this.x = x;
   this.y = y;
@@ -72,7 +74,8 @@ function setup() {
         left: view.left,
         top: view.top - Math.round((height / workerLen) * i) * view.pixelSize,
         pixelSize: view.pixelSize,
-        stepSize
+        stepSize,
+        maxDepth
       },
       [canvas]
     );
@@ -84,20 +87,17 @@ function reset() {
     const canvas = canvases[i];
     const worker = workers[i];
 
-    worker.postMessage("Stop");
-
     worker.postMessage({
       left: view.left,
       top: view.top - Math.round((height / workerLen) * i) * view.pixelSize,
       pixelSize: view.pixelSize,
-      stepSize
+      stepSize,
+      maxDepth
     });
   }
 }
 
 window.onclick = function(e) {
-  console.log(e);
-
   if (notReady > 0) {
     console.log(`${notReady} workers at not ready yet`);
   }
@@ -109,11 +109,10 @@ window.onclick = function(e) {
   const y = view.top - col * view.pixelSize;
   view = new View(x, y, view.scale / zoom);
 
-  console.log(view);
-
-  // send a message to the workers to reset
   reset();
 };
+
+window.onkeypress = function(e) {};
 
 let mouseX = 0;
 let mouseY = 0;
