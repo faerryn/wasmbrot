@@ -9,18 +9,18 @@ let juliaIm;
 let escape;
 let colorDist;
 let view;
-let alreadySetup = false;
-let stepSize = 32;
+let stepSize;
 
 let canvasRows;
 let canvasCols;
 let zoom = 5;
 
-let maxDepth = Infinity;
+let maxDwell = Infinity;
 
 let canvases = [];
 let workers = [];
 
+let workersReady = false;
 (window.onpopstate = function() {
   const params = new URL(document.location).searchParams;
 
@@ -82,12 +82,12 @@ let workers = [];
     zoom = 4;
   }
 
-  maxDepth = parseFloat(params.get("maxDepth")); // parseFloat because Infinity
-  if (isNaN(maxDepth)) {
-    maxDepth = Infinity;
+  maxDwell = parseFloat(params.get("maxDwell")); // parseFloat because Infinity
+  if (isNaN(maxDwell)) {
+    maxDwell = Infinity;
   }
 
-  if (alreadySetup) {
+  if (workersReady) {
     setup();
   }
 })();
@@ -131,11 +131,9 @@ for (let row = 0; row < canvasRows; row += 1) {
     workers.push(worker);
 
     worker.onmessage = function(msg) {
-      if (msg.data === "Ready") {
-        notReady -= 1;
-        if (notReady === 0) {
-          setup();
-        }
+      notReady -= 1;
+      if (notReady === 0) {
+        setup();
       }
     };
   }
@@ -156,7 +154,7 @@ function setup() {
 
     worker.postMessage(
       {
-        canvas: !alreadySetup ? canvas : undefined,
+        canvas: !workersReady ? canvas : undefined,
         multi,
         burning,
         juliaRe: isNaN(juliaRe) ? null : juliaRe,
@@ -167,14 +165,14 @@ function setup() {
         pixelWidth: view.pixelSize,
         pixelHeight: view.pixelSize,
         stepSize,
-        maxDepth,
+        maxDwell,
         colorDist
       },
-      !alreadySetup ? [canvas] : []
+      !workersReady ? [canvas] : []
     );
   }
 
-  alreadySetup = true;
+  workersReady = true;
 }
 
 overlay.onclick = function(e) {
@@ -235,7 +233,7 @@ function currentState() {
     scale: view.scale,
     stepSize,
     colorDist,
-    maxDepth,
+    maxDwell,
     zoom
   };
 }

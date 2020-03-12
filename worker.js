@@ -8,7 +8,6 @@ import init, { Wasmbrot } from "./wasmbrot.js";
 
 let memory = null;
 let canvas = null;
-let alreadySetup = false;
 let ctx;
 let wasmbrot;
 let image;
@@ -16,13 +15,13 @@ let width;
 let height;
 let stopped;
 let stepSize;
-let maxDepth;
+let maxDwell;
 let colorDist;
 
 async function run() {
   const wasm = await init();
   memory = wasm.memory;
-  postMessage("Ready");
+  postMessage([]);
 }
 
 run();
@@ -41,11 +40,11 @@ onmessage = function(msg) {
     const juliaIm = msg.data.juliaIm;
     const escape = msg.data.escape;
 
-    maxDepth = msg.data.maxDepth;
-    stepSize = msg.data.stepSize;
+    maxDwell = msg.data.maxDwell;
+    stepSize = BigInt(msg.data.stepSize);
     colorDist = msg.data.colorDist;
 
-    if (!alreadySetup) {
+    if (canvas === null) {
       canvas = msg.data.canvas;
       ctx = canvas.getContext("2d", { alpha: false });
       width = canvas.width;
@@ -74,7 +73,6 @@ onmessage = function(msg) {
 
       stopped = false;
       requestAnimationFrame(draw);
-      alreadySetup = true;
     } else {
       wasmbrot.reparam(
         multi,
@@ -111,7 +109,7 @@ function draw() {
 
     ctx.putImageData(image, 0, 0);
 
-    if (wasmbrot.depth() < maxDepth) {
+    if (wasmbrot.dwell() < maxDwell) {
       setTimeout(function() {
         requestAnimationFrame(draw);
       }, 1000 / 60);

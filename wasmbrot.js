@@ -20,6 +20,18 @@ function getStringFromWasm0(ptr, len) {
 function isLikeNone(x) {
     return x === undefined || x === null;
 }
+
+const u32CvtShim = new Uint32Array(2);
+
+const uint64CvtShim = new BigUint64Array(u32CvtShim.buffer);
+
+let cachegetInt32Memory0 = null;
+function getInt32Memory0() {
+    if (cachegetInt32Memory0 === null || cachegetInt32Memory0.buffer !== wasm.memory.buffer) {
+        cachegetInt32Memory0 = new Int32Array(wasm.memory.buffer);
+    }
+    return cachegetInt32Memory0;
+}
 /**
 */
 export class Wasmbrot {
@@ -70,11 +82,14 @@ export class Wasmbrot {
         wasm.wasmbrot_reparam(this.ptr, multi, burning, !isLikeNone(julia_re), isLikeNone(julia_re) ? 0 : julia_re, !isLikeNone(julia_im), isLikeNone(julia_im) ? 0 : julia_im, escape, left, top, pixel_width, pixel_height);
     }
     /**
-    * @param {number} step_size
+    * @param {BigInt} step_size
     * @returns {boolean}
     */
     step(step_size) {
-        var ret = wasm.wasmbrot_step(this.ptr, step_size);
+        uint64CvtShim[0] = step_size;
+        const low0 = u32CvtShim[0];
+        const high0 = u32CvtShim[1];
+        var ret = wasm.wasmbrot_step(this.ptr, low0, high0);
         return ret !== 0;
     }
     /**
@@ -84,11 +99,16 @@ export class Wasmbrot {
         wasm.wasmbrot_colorize(this.ptr, color_dist);
     }
     /**
-    * @returns {number}
+    * @returns {BigInt}
     */
-    depth() {
-        var ret = wasm.wasmbrot_depth(this.ptr);
-        return ret >>> 0;
+    dwell() {
+        wasm.wasmbrot_dwell(8, this.ptr);
+        var r0 = getInt32Memory0()[8 / 4 + 0];
+        var r1 = getInt32Memory0()[8 / 4 + 1];
+        u32CvtShim[0] = r0;
+        u32CvtShim[1] = r1;
+        const n0 = uint64CvtShim[0];
+        return n0;
     }
     /**
     * @returns {number}
