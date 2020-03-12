@@ -47,7 +47,7 @@ onmessage = function(msg) {
 
     if (!alreadySetup) {
       canvas = msg.data.canvas;
-      ctx = canvas.getContext("2d");
+      ctx = canvas.getContext("2d", { alpha: false });
       width = canvas.width;
       height = canvas.height;
       wasmbrot = Wasmbrot.new(
@@ -112,11 +112,13 @@ function draw() {
     ctx.putImageData(image, 0, 0);
 
     if (wasmbrot.depth() < maxDepth) {
-      requestAnimationFrame(draw);
-    } else {
-      stopped = true;
+      setTimeout(function() {
+        requestAnimationFrame(draw);
+      }, 1000 / 60);
+      return;
     }
-  } else {
-    stopped = true;
   }
+
+  // reaching here should stop
+  stopped = true;
 }

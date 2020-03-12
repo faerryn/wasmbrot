@@ -10,6 +10,16 @@ let escape;
 let colorDist;
 let view;
 let alreadySetup = false;
+let stepSize = 32;
+
+let canvasRows;
+let canvasCols;
+let zoom = 5;
+
+let maxDepth = Infinity;
+
+let canvases = [];
+let workers = [];
 
 (window.onpopstate = function() {
   const params = new URL(document.location).searchParams;
@@ -21,9 +31,9 @@ let alreadySetup = false;
 
   burning = (parseInt(params.get("burning")) === 1) | false;
 
-  juliaRe = parseFloat(params.get("juliaRe"));
+  juliaRe = parseFloat(params.get("juliaRe")); // we want these to be NaN if they are NaN
 
-  juliaIm = parseFloat(params.get("juliaIm"));
+  juliaIm = parseFloat(params.get("juliaIm")); // we want these to be NaN if they are NaN
 
   escape = parseFloat(params.get("escape"));
   if (isNaN(escape)) {
@@ -32,7 +42,7 @@ let alreadySetup = false;
 
   colorDist = parseFloat(params.get("colorDist"));
   if (isNaN(colorDist)) {
-    colorDist = 10;
+    colorDist = 16;
   }
 
   let x = parseFloat(params.get("x"));
@@ -52,58 +62,47 @@ let alreadySetup = false;
 
   view = new View(x, y, scale);
 
+  stepSize = parseInt(params.get("stepSize"));
+  if (isNaN(stepSize)) {
+    stepSize = 16;
+  }
+
+  canvasRows = parseInt(params.get("canvasRows"));
+  if (isNaN(canvasRows)) {
+    canvasRows = Math.ceil(Math.sqrt(navigator.hardwareConcurrency));
+  }
+
+  canvasCols = parseInt(params.get("canvasCols"));
+  if (isNaN(canvasCols)) {
+    canvasCols = Math.ceil(navigator.hardwareConcurrency / canvasRows);
+  }
+
+  zoom = parseFloat(params.get("zoom"));
+  if (isNaN(zoom)) {
+    zoom = 4;
+  }
+
+  maxDepth = parseFloat(params.get("maxDepth")); // parseFloat because Infinity
+  if (isNaN(maxDepth)) {
+    maxDepth = Infinity;
+  }
+
   if (alreadySetup) {
     setup();
   }
 })();
 
-function currentState() {
-  return {
-    multi,
-    burning,
-    juliaRe,
-    juliaIm,
-    escape,
-    x: view.x,
-    y: view.y,
-    scale: view.scale,
-    colorDist
-  };
-}
-
-function View(x, y, scale) {
-  this.x = x;
-  this.y = y;
-  this.scale = scale;
-
-  this.pixelSize = (scale * 2) / Math.min(width, height);
-
-  this.left = x - (this.pixelSize * width) / 2;
-  this.top = y + (this.pixelSize * height) / 2;
-}
-
-const zoom = 5;
-
 const overlay = document.getElementById("overlay");
 overlay.width = width;
 overlay.height = height;
 const overlayCtx = overlay.getContext("2d");
+overlayCtx.strokeStyle = "white";
 
 const overlayWidth = width / zoom;
 const overlayHeight = height / zoom;
 
-const canvasRows = Math.floor(height / 400);
-const canvasCols = Math.floor(width / 400);
 const workerLen = canvasRows * canvasCols;
-
-const stepSize = 32;
-
-const maxDepth = Infinity;
-
-let canvases = [];
-let workers = [];
 let notReady = workerLen;
-
 for (let row = 0; row < canvasRows; row += 1) {
   for (let col = 0; col < canvasCols; col += 1) {
     const canvas = document.createElement("canvas");
@@ -206,16 +205,13 @@ overlay.onmousemove = function(e) {
     clearTimeout(vanishPreview);
   }
 
-  overlayCtx.clearRect(0, 0, width, height);
-
   const row = clamp(e.x, overlayWidth / 2, width - overlayWidth / 2);
   const col = clamp(e.y, overlayHeight / 2, height - overlayHeight / 2);
 
   const left = row - overlayWidth / 2;
   const top = col - overlayHeight / 2;
 
-  overlayCtx.strokeStyle = "white";
-
+  overlayCtx.clearRect(0, 0, width, height);
   overlayCtx.strokeRect(left, top, overlayWidth, overlayHeight);
 
   vanishPreview = setTimeout(function() {
@@ -226,3 +222,32 @@ overlay.onmousemove = function(e) {
 function clamp(x, min, max) {
   return Math.min(Math.max(x, min), max);
 }
+
+function currentState() {
+  return {
+    multi,
+    burning,
+    juliaRe,
+    juliaIm,
+    escape,
+    x: view.x,
+    y: view.y,
+    scale: view.scale,
+    stepSize,
+    colorDist,
+    maxDepth,
+    zoom
+  };
+}
+
+function View(x, y, scale) {
+  this.x = x;
+  this.y = y;
+  this.scale = scale;
+
+  this.pixelSize = (scale * 2) / Math.min(width, height);
+
+  this.left = x - (this.pixelSize * width) / 2;
+  this.top = y + (this.pixelSize * height) / 2;
+}
+

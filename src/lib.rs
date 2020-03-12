@@ -12,7 +12,7 @@ pub struct Wasmbrot {
     height: usize,
     depth: u32,
     depths: Vec<u32>,
-    in_set: Vec<bool>,
+    pixel_states: Vec<PixelState>,
     zs: Vec<Complex<f64>>,
     cs: Vec<Complex<f64>>,
     colors: Vec<u8>,
@@ -35,6 +35,7 @@ impl Wasmbrot {
     ) -> Wasmbrot {
         let mut zs = Vec::with_capacity(width * height);
         let mut cs = Vec::with_capacity(width * height);
+        let mut colors = Vec::with_capacity(4 * width * height);
 
         for idx in 0..width * height {
             let row = idx / width;
@@ -43,13 +44,14 @@ impl Wasmbrot {
             let x = left + col as f64 * pixel_width;
             let y = top - row as f64 * pixel_height;
 
-            let z = Complex::new(x, y);
+            zs.push(Complex::new(x, y));
 
-            zs.push(z);
+            cs.push(Complex::new(julia_re.unwrap_or(x), julia_im.unwrap_or(y)));
 
-            let c = Complex::new(julia_re.unwrap_or(x), julia_im.unwrap_or(y));
-
-            cs.push(c);
+            colors.push(0);
+            colors.push(0);
+            colors.push(0);
+            colors.push(0xff);
         }
 
         Wasmbrot {
@@ -62,10 +64,10 @@ impl Wasmbrot {
             height,
             depth: 0,
             depths: vec![0; width * height],
-            in_set: vec![true; width * height],
+            pixel_states: vec![PixelState::InSet; width * height],
             zs,
             cs,
-            colors: vec![0; 4 * width * height],
+            colors,
         }
     }
 
@@ -90,11 +92,13 @@ impl Wasmbrot {
         self.depth = 0;
         for idx in 0..self.width * self.height {
             self.depths[idx] = 0;
-            self.in_set[idx] = true;
-            self.colors[idx] = 0;
-            self.colors[idx + 1] = 0;
-            self.colors[idx + 2] = 0;
-            self.colors[idx + 3] = 0xff;
+
+            self.pixel_states[idx] = PixelState::InSet;
+
+            self.colors[4 * idx] = 0;
+            self.colors[4 * idx + 1] = 0;
+            self.colors[4 * idx + 2] = 0;
+            self.colors[4 * idx + 3] = 0xff;
 
             let row = idx / self.width;
             let col = idx % self.width;
@@ -102,13 +106,9 @@ impl Wasmbrot {
             let x = left + col as f64 * pixel_width;
             let y = top - row as f64 * pixel_height;
 
-            let z = Complex::new(x, y);
+            self.zs[idx] = Complex::new(x, y);
 
-            self.zs[idx] = z;
-
-            let c = Complex::new(self.julia_re.unwrap_or(x), self.julia_im.unwrap_or(y));
-
-            self.cs[idx] = c;
+            self.cs[idx] = Complex::new(self.julia_re.unwrap_or(x), self.julia_im.unwrap_or(y));
         }
     }
 
@@ -117,32 +117,38 @@ impl Wasmbrot {
 
         let mut changed = false;
 
-        'pixels: for idx in 0..(self.width * self.height) {
-            let in_set = &mut self.in_set[idx];
+        let multi_style = if self.multi == 2.0 {
+            MultiStyle::Square
+        } else if self.multi == self.multi.trunc() {
+            MultiStyle::Uint(self.multi as u32)
+        } else {
+            MultiStyle::Float(self.multi)
+        };
 
-            if *in_set {
+        'pixels: for idx in 0..(self.width * self.height) {
+            if self.pixel_states[idx] == PixelState::InSet {
                 changed = true;
 
                 let c = &self.cs[idx];
                 let z = &mut self.zs[idx];
 
                 for _ in 0..step_size {
-                    if z.norm_sqr() > self.escape * self.escape {
-                        *in_set = false;
-                        continue 'pixels;
-                    }
-
-                    self.depths[idx] += 1;
-
                     if self.burning {
                         z.re = z.re.abs();
                         z.im = z.im.abs();
                     }
 
-                    if self.multi == self.multi.trunc() {
-                        *z = z.powu(self.multi as u32) + c;
-                    } else {
-                        *z = z.powf(self.multi) + c;
+                    if z.norm_sqr() > self.escape * self.escape {
+                        self.pixel_states[idx] = PixelState::NotRendered;
+                        continue 'pixels;
+                    }
+
+                    self.depths[idx] += 1;
+
+                    match multi_style {
+                        MultiStyle::Square => *z = *z * *z + c,
+                        MultiStyle::Uint(multi) => *z = z.powu(multi) + c,
+                        MultiStyle::Float(multi) => *z = z.powf(multi) + c,
                     }
                 }
             }
@@ -153,9 +159,9 @@ impl Wasmbrot {
 
     pub fn colorize(&mut self, color_dist: f64) {
         for idx in 0..self.width * self.height {
-            let (r, g, b) = if self.in_set[idx] {
-                (0, 0, 0)
-            } else {
+            if self.pixel_states[idx] == PixelState::NotRendered {
+                self.pixel_states[idx] = PixelState::Rendered;
+
                 let depth = self.depths[idx] as f64 / color_dist;
 
                 let r = depth.sin();
@@ -170,13 +176,11 @@ impl Wasmbrot {
                 let b = b * b;
                 let b = (b * 255.0) as u8;
 
-                (r, g, b)
-            };
-
-            self.colors[4 * idx] = r;
-            self.colors[4 * idx + 1] = g;
-            self.colors[4 * idx + 2] = b;
-            self.colors[4 * idx + 3] = 0xff;
+                self.colors[4 * idx] = r;
+                self.colors[4 * idx + 1] = g;
+                self.colors[4 * idx + 2] = b;
+                self.colors[4 * idx + 3] = 0xff;
+            }
         }
     }
 
@@ -187,4 +191,17 @@ impl Wasmbrot {
     pub fn colors(&self) -> *const u8 {
         self.colors.as_ptr()
     }
+}
+
+enum MultiStyle {
+    Square,
+    Uint(u32),
+    Float(f64),
+}
+
+#[derive(Clone, PartialEq)]
+enum PixelState {
+    InSet,
+    NotRendered,
+    Rendered,
 }
