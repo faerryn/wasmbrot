@@ -41,6 +41,7 @@ onmessage = function(msg) {
       ctx = canvas.getContext("2d", { alpha: false });
       const width = canvas.width;
       const height = canvas.height;
+
       wasmbrot = Wasmbrot.new(
         multi,
         burning === 1,
@@ -76,8 +77,10 @@ onmessage = function(msg) {
       );
     }
 
-    ctx.putImageData(image, 0, 0);
-    requestAnimationFrame(draw);
+    requestAnimationFrame(function() {
+      ctx.putImageData(image, 0, 0);
+      requestAnimationFrame(draw);
+    });
   }
 };
 

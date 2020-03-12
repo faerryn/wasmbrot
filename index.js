@@ -96,15 +96,6 @@ let workersReceivedCanvas = false;
   }
 })(); // run this function now!
 
-const overlay = document.getElementById("overlay");
-overlay.width = width;
-overlay.height = height;
-const overlayCtx = overlay.getContext("2d");
-overlayCtx.strokeStyle = "white";
-
-const overlayWidth = width / zoom;
-const overlayHeight = height / zoom;
-
 const workerLen = canvasRows * canvasCols;
 let notReady = workerLen;
 for (let row = 0; row < canvasRows; row += 1) {
@@ -181,6 +172,15 @@ function reparam() {
   workersReceivedCanvas = true;
 }
 
+const overlay = document.getElementById("overlay");
+overlay.width = width;
+overlay.height = height;
+const overlayCtx = overlay.getContext("2d");
+overlayCtx.strokeStyle = "white";
+
+const overlayWidth = width / zoom;
+const overlayHeight = height / zoom;
+
 overlay.onclick = function(e) {
   if (notReady > 0) {
     console.log(`${notReady} workers at not ready yet`);
@@ -203,8 +203,12 @@ overlay.onclick = function(e) {
 };
 
 let vanishPreview;
+const banner = document.getElementById("banner");
+console.log(banner);
+banner.width = Math.min(overlayWidth, overlayHeight) / 2;
+banner.height = banner.width;
 
-overlay.onmousemove = function(e) {
+window.onmousemove = function(e) {
   if (vanishPreview !== undefined) {
     clearTimeout(vanishPreview);
   }
@@ -218,8 +222,11 @@ overlay.onmousemove = function(e) {
   overlayCtx.clearRect(0, 0, width, height);
   overlayCtx.strokeRect(left, top, overlayWidth, overlayHeight);
 
+  banner.hidden = false;
+
   vanishPreview = setTimeout(function() {
     overlayCtx.clearRect(0, 0, width, height);
+    banner.hidden = true;
   }, 2000);
 };
 
