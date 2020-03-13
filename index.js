@@ -175,7 +175,6 @@ overlay.onclick = function(e) {
 
 let vanishPreview;
 const banner = document.getElementById("banner");
-console.log(banner);
 banner.width = Math.min(overlayWidth, overlayHeight) / 2;
 banner.height = banner.width;
 
