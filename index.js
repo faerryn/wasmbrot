@@ -21,49 +21,22 @@ let canvases = [];
 let workers = [];
 
 let workersReceivedCanvas = false;
+
+let parameters = new Parameters();
+
 (window.onpopstate = function() {
   const params = new URL(document.location).searchParams;
+  parameters.multi = parseFloat(params.get("multi")) || 2;
+  parameters.burning = parseInt(params.get("burning")) || false;
+  parameters.juliaRe = parseFloat(params.get("juliaRe")) || null;
+  parameters.juliaIm = parseFloat(params.get("juliaIm")) || null;
+  parameters.escape = parseFloat(params.get("escape")) || 2;
+  parameters.colorDist = parseFloat(params.get("colorDist")) || 16;
+  parameters.x = parseFloat(params.get("x")) || 0;
+  parameters.y = parseFloat(params.get("y")) || 0;
+  parameters.scale = parseFloat(params.get("scale")) || 2;
 
-  multi = parseFloat(params.get("multi"));
-  if (isNaN(multi)) {
-    multi = 2;
-  }
-
-  burning = parseInt(params.get("burning"));
-  if (isNaN(burning)) {
-    burning = 0;
-  }
-
-  juliaRe = parseFloat(params.get("juliaRe")); // we want these to be NaN if they are NaN
-
-  juliaIm = parseFloat(params.get("juliaIm")); // we want these to be NaN if they are NaN
-
-  escape = parseFloat(params.get("escape"));
-  if (isNaN(escape)) {
-    escape = 2;
-  }
-
-  colorDist = parseFloat(params.get("colorDist"));
-  if (isNaN(colorDist)) {
-    colorDist = 16;
-  }
-
-  let x = parseFloat(params.get("x"));
-  if (isNaN(x)) {
-    x = 0;
-  }
-
-  let y = parseFloat(params.get("y"));
-  if (isNaN(y)) {
-    y = 0;
-  }
-
-  let scale = parseFloat(params.get("scale"));
-  if (isNaN(scale)) {
-    scale = 2;
-  }
-
-  view = new View(x, y, scale);
+  view = new View(parameters);
 
   try {
     stepSize = BigInt(params.get("stepSize"));
@@ -71,25 +44,17 @@ let workersReceivedCanvas = false;
     stepSize = 16n;
   }
 
-  canvasRows = parseInt(params.get("canvasRows"));
-  if (isNaN(canvasRows)) {
-    canvasRows = Math.ceil(Math.sqrt(navigator.hardwareConcurrency));
-  }
+  canvasRows =
+    parseInt(params.get("canvasRows")) ||
+    Math.ceil(Math.sqrt(navigator.hardwareConcurrency));
 
-  canvasCols = parseInt(params.get("canvasCols"));
-  if (isNaN(canvasCols)) {
-    canvasCols = Math.ceil(navigator.hardwareConcurrency / canvasRows);
-  }
+  canvasCols =
+    parseInt(params.get("canvasCols")) ||
+    Math.ceil(navigator.hardwareConcurrency / canvasRows);
 
-  zoom = parseFloat(params.get("zoom"));
-  if (isNaN(zoom)) {
-    zoom = 4;
-  }
+  zoom = parseFloat(params.get("zoom")) || 4;
 
-  maxDwell = parseFloat(params.get("maxDwell")); // parseFloat because Infinity
-  if (isNaN(maxDwell)) {
-    maxDwell = Infinity;
-  }
+  maxDwell = parseFloat(params.get("maxDwell")) || Infinity;
 
   if (workersReceivedCanvas) {
     reparam();
@@ -152,18 +117,19 @@ function reparam() {
     worker.postMessage(
       {
         canvas: !workersReceivedCanvas ? canvas : undefined,
-        multi,
-        burning,
-        juliaRe: isNaN(juliaRe) ? null : juliaRe,
-        juliaIm: isNaN(juliaIm) ? null : juliaIm,
-        escape,
+        // multi,
+        // burning,
+        // juliaRe: isNaN(juliaRe) ? null : juliaRe,
+        // juliaIm: isNaN(juliaIm) ? null : juliaIm,
+        // escape,
         left,
         top,
         pixelWidth: view.pixelSize,
         pixelHeight: view.pixelSize,
         stepSize,
         maxDwell,
-        colorDist
+        // colorDist
+        parameters
       },
       !workersReceivedCanvas ? [canvas] : []
     );
@@ -191,12 +157,17 @@ overlay.onclick = function(e) {
 
   const x = view.left + row * view.pixelSize;
   const y = view.top - col * view.pixelSize;
-  view = new View(x, y, view.scale / zoom);
+
+  parameters.x = x;
+  parameters.y = y;
+  parameters.scale = view.scale / zoom;
+
+  view = new View(parameters);
 
   window.history.pushState(
     "",
     "",
-    `?${new URLSearchParams(currentState()).toString()}`
+    `?${new URLSearchParams(parameters).toString()}`
   );
 
   reparam();
@@ -234,30 +205,52 @@ function clamp(x, min, max) {
   return Math.min(Math.max(x, min), max);
 }
 
-function currentState() {
-  return {
-    multi,
-    burning,
-    juliaRe,
-    juliaIm,
-    escape,
-    x: view.x,
-    y: view.y,
-    scale: view.scale,
-    stepSize,
-    colorDist,
-    maxDwell,
-    zoom
-  };
+function Parameters(
+  x,
+  y,
+  scale,
+  multi,
+  burning,
+  juliaRe,
+  juliaIm,
+  escape,
+  colorDist
+) {
+  this.x = x || 0;
+  this.y = y || 0;
+  this.scale = scale || 2;
+  this.multi = multi || 2;
+  this.burning = burning || false;
+  this.juliaRe = juliaRe || null;
+  this.juliaIm = juliaIm || null;
+  this.escape = escape || 2;
+  this.colorDist = colorDist || 16;
 }
 
-function View(x, y, scale) {
-  this.x = x;
-  this.y = y;
-  this.scale = scale;
+// function currentState() {
+//   return {
+//     multi,
+//     burning,
+//     juliaRe,
+//     juliaIm,
+//     escape,
+//     x: view.x,
+//     y: view.y,
+//     scale: view.scale,
+//     stepSize,
+//     colorDist,
+//     maxDwell,
+//     zoom
+//   };
+// }
 
-  this.pixelSize = (scale * 2) / Math.min(width, height);
+function View(params) {
+  this.x = params.x;
+  this.y = params.y;
+  this.scale = params.scale;
 
-  this.left = x - (this.pixelSize * width) / 2;
-  this.top = y + (this.pixelSize * height) / 2;
+  this.pixelSize = (params.scale * 2) / Math.min(width, height);
+
+  this.left = this.x - (this.pixelSize * width) / 2;
+  this.top = this.y + (this.pixelSize * height) / 2;
 }

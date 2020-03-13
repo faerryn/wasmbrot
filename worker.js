@@ -26,15 +26,15 @@ onmessage = function(msg) {
     const top = msg.data.top;
     const pixelWidth = msg.data.pixelWidth;
     const pixelHeight = msg.data.pixelHeight;
-    const multi = msg.data.multi;
-    const burning = msg.data.burning;
-    const juliaRe = msg.data.juliaRe;
-    const juliaIm = msg.data.juliaIm;
-    const escape = msg.data.escape;
+    const multi = msg.data.parameters.multi;
+    const burning = msg.data.parameters.burning;
+    const juliaRe = msg.data.parameters.juliaRe;
+    const juliaIm = msg.data.parameters.juliaIm;
+    const escape = msg.data.parameters.escape;
 
     maxDwell = msg.data.maxDwell;
     stepSize = msg.data.stepSize;
-    colorDist = msg.data.colorDist;
+    colorDist = msg.data.parameters.colorDist;
 
     if (ctx === null) {
       const canvas = msg.data.canvas;
