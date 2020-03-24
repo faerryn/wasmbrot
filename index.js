@@ -2,11 +2,6 @@
 const width = window.innerWidth;
 const height = window.innerHeight;
 
-let multi;
-let burning;
-let juliaRe;
-let juliaIm;
-let escape;
 let colorDist;
 let view;
 let stepSize;
@@ -26,11 +21,6 @@ let parameters = new Parameters();
 
 (window.onpopstate = function() {
   const params = new URL(document.location).searchParams;
-  parameters.multi = parseFloat(params.get("multi")) || 2;
-  parameters.burning = parseInt(params.get("burning")) || false;
-  parameters.juliaRe = parseFloat(params.get("juliaRe")) || null;
-  parameters.juliaIm = parseFloat(params.get("juliaIm")) || null;
-  parameters.escape = parseFloat(params.get("escape")) || 2;
   parameters.colorDist = parseFloat(params.get("colorDist")) || 16;
   parameters.x = parseFloat(params.get("x")) || 0;
   parameters.y = parseFloat(params.get("y")) || 0;
@@ -117,18 +107,12 @@ function reparam() {
     worker.postMessage(
       {
         canvas: !workersReceivedCanvas ? canvas : undefined,
-        // multi,
-        // burning,
-        // juliaRe: isNaN(juliaRe) ? null : juliaRe,
-        // juliaIm: isNaN(juliaIm) ? null : juliaIm,
-        // escape,
         left,
         top,
         pixelWidth: view.pixelSize,
         pixelHeight: view.pixelSize,
         stepSize,
         maxDwell,
-        // colorDist
         parameters
       },
       !workersReceivedCanvas ? [canvas] : []
@@ -208,40 +192,13 @@ function Parameters(
   x,
   y,
   scale,
-  multi,
-  burning,
-  juliaRe,
-  juliaIm,
-  escape,
   colorDist
 ) {
   this.x = x || 0;
   this.y = y || 0;
   this.scale = scale || 2;
-  this.multi = multi || 2;
-  this.burning = burning || false;
-  this.juliaRe = juliaRe || null;
-  this.juliaIm = juliaIm || null;
-  this.escape = escape || 2;
   this.colorDist = colorDist || 16;
 }
-
-// function currentState() {
-//   return {
-//     multi,
-//     burning,
-//     juliaRe,
-//     juliaIm,
-//     escape,
-//     x: view.x,
-//     y: view.y,
-//     scale: view.scale,
-//     stepSize,
-//     colorDist,
-//     maxDwell,
-//     zoom
-//   };
-// }
 
 function View(params) {
   this.x = params.x;

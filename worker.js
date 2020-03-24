@@ -26,11 +26,6 @@ onmessage = function(msg) {
     const top = msg.data.top;
     const pixelWidth = msg.data.pixelWidth;
     const pixelHeight = msg.data.pixelHeight;
-    const multi = msg.data.parameters.multi;
-    const burning = msg.data.parameters.burning;
-    const juliaRe = msg.data.parameters.juliaRe;
-    const juliaIm = msg.data.parameters.juliaIm;
-    const escape = msg.data.parameters.escape;
 
     maxDwell = msg.data.maxDwell;
     stepSize = msg.data.stepSize;
@@ -43,11 +38,6 @@ onmessage = function(msg) {
       const height = canvas.height;
 
       wasmbrot = Wasmbrot.new(
-        multi,
-        burning === 1,
-        juliaRe,
-        juliaIm,
-        escape,
         width,
         height,
         left,
@@ -65,11 +55,6 @@ onmessage = function(msg) {
       image = new ImageData(colors, width);
     } else {
       wasmbrot.reparam(
-        multi,
-        burning === 1,
-        juliaRe,
-        juliaIm,
-        escape,
         left,
         top,
         pixelWidth,
@@ -89,11 +74,12 @@ function draw() {
 
   if (result.new_colors) {
     wasmbrot.colorize(colorDist);
-
     ctx.putImageData(image, 0, 0);
   }
 
-  if (!result.all_known && wasmbrot.dwell() < maxDwell) {
+  if (result.all_known || wasmbrot.dwell() >= maxDwell) {
+    console.log('Finished!');
+  } else {
     requestAnimationFrame(draw);
   }
 }

@@ -3,11 +3,6 @@ use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
 pub struct Wasmbrot {
-    multi: Multi,
-    burning: bool,
-    julia_re: Option<f64>,
-    julia_im: Option<f64>,
-    escape: f64,
     width: usize,
     height: usize,
     dwell: u64,
@@ -21,11 +16,6 @@ pub struct Wasmbrot {
 #[wasm_bindgen]
 impl Wasmbrot {
     pub fn new(
-        multi: f64,
-        burning: bool,
-        julia_re: Option<f64>,
-        julia_im: Option<f64>,
-        escape: f64,
         width: usize,
         height: usize,
         left: f64,
@@ -48,8 +38,7 @@ impl Wasmbrot {
             let z = Complex::new(x, y);
             zs.push(z);
             period_checks.push(PeriodCheck::new(z));
-
-            cs.push(Complex::new(julia_re.unwrap_or(x), julia_im.unwrap_or(y)));
+            cs.push(z);
 
             colors.push(0);
             colors.push(0);
@@ -57,20 +46,7 @@ impl Wasmbrot {
             colors.push(0xff);
         }
 
-        let multi = if multi == 2.0 {
-            Multi::Square
-        } else if multi == multi.trunc() {
-            Multi::Uint(multi as u32)
-        } else {
-            Multi::Float(multi)
-        };
-
         Wasmbrot {
-            multi,
-            burning,
-            julia_re,
-            julia_im,
-            escape,
             width,
             height,
             dwell: 0,
@@ -82,31 +58,7 @@ impl Wasmbrot {
         }
     }
 
-    pub fn reparam(
-        &mut self,
-        multi: f64,
-        burning: bool,
-        julia_re: Option<f64>,
-        julia_im: Option<f64>,
-        escape: f64,
-        left: f64,
-        top: f64,
-        pixel_width: f64,
-        pixel_height: f64,
-    ) {
-        self.multi = if multi == 2.0 {
-            Multi::Square
-        } else if multi == multi.trunc() {
-            Multi::Uint(multi as u32)
-        } else {
-            Multi::Float(multi)
-        };
-
-        self.burning = burning;
-        self.julia_re = julia_re;
-        self.julia_im = julia_im;
-        self.escape = escape;
-
+    pub fn reparam(&mut self, left: f64, top: f64, pixel_width: f64, pixel_height: f64) {
         self.dwell = 0;
         for idx in 0..self.width * self.height {
             self.points[idx] = Point::Unknown(0);
@@ -124,8 +76,7 @@ impl Wasmbrot {
             let z = Complex::new(x, y);
             self.zs[idx] = z;
             self.period_checks[idx] = PeriodCheck::new(z);
-
-            self.cs[idx] = Complex::new(self.julia_re.unwrap_or(x), self.julia_im.unwrap_or(y));
+            self.cs[idx] = z;
         }
     }
 
@@ -135,7 +86,7 @@ impl Wasmbrot {
         let mut all_known = true;
         let mut new_colors = false;
 
-        'pixels: for idx in 0..(self.width * self.height) {
+        for idx in 0..(self.width * self.height) {
             if let Point::Unknown(dwell) = &mut self.points[idx] {
                 all_known = false;
 
@@ -144,28 +95,24 @@ impl Wasmbrot {
                 let period_check = &mut self.period_checks[idx];
 
                 for _ in 0..step_size {
-                    if self.burning {
-                        z.re = z.re.abs();
-                        z.im = z.im.abs();
-                    }
+                    let re_squared = z.re * z.re;
+                    let im_squared = z.im * z.im;
 
-                    if z.norm_sqr() > self.escape * self.escape {
+                    if re_squared + im_squared > 4.0 {
                         self.points[idx] = Point::NotRendered(*dwell);
                         new_colors = true;
-                        continue 'pixels;
+                        break;
                     }
 
                     *dwell += 1;
 
-                    match self.multi {
-                        Multi::Square => *z = *z * *z + c,
-                        Multi::Uint(multi) => *z = z.powu(multi) + c,
-                        Multi::Float(multi) => *z = z.powf(multi) + c,
-                    }
+                    let re_im = z.re * z.im;
+                    z.re = re_squared - im_squared + c.re;
+                    z.im = 2.0 * re_im + c.im;
 
                     if *z == period_check.check_against {
                         self.points[idx] = Point::InSet;
-                        continue 'pixels;
+                        break;
                     }
 
                     if *dwell > period_check.dwell_bounds {
@@ -189,17 +136,18 @@ impl Wasmbrot {
 
                 let dwell = dwell as f64 / color_dist;
 
-                let r = dwell.sin();
-                let r = r * r;
-                let r = (r * 255.0) as u8;
+                let r = dwell;
+                let g = dwell + std::f64::consts::FRAC_PI_4;
+                let b = dwell + std::f64::consts::FRAC_PI_2;
 
-                let g = (dwell + std::f64::consts::FRAC_PI_4).sin();
-                let g = g * g;
-                let g = (g * 255.0) as u8;
+                let r = r.sin();
+                let r = (r * r * 255.0) as u8;
 
-                let b = (dwell + std::f64::consts::FRAC_PI_2).sin();
-                let b = b * b;
-                let b = (b * 255.0) as u8;
+                let g = g.sin();
+                let g = (g * g * 255.0) as u8;
+
+                let b = b.sin();
+                let b = (b * b * 255.0) as u8;
 
                 self.colors[4 * idx] = r;
                 self.colors[4 * idx + 1] = g;
@@ -221,12 +169,6 @@ impl Wasmbrot {
 pub struct StepResult {
     pub all_known: bool,
     pub new_colors: bool,
-}
-
-enum Multi {
-    Square,
-    Uint(u32),
-    Float(f64),
 }
 
 #[derive(Clone, PartialEq)]
