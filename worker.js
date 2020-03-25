@@ -77,9 +77,7 @@ function draw() {
     ctx.putImageData(image, 0, 0);
   }
 
-  if (result.all_known || wasmbrot.dwell() >= maxDwell) {
-    console.log('Finished!');
-  } else {
+  if (!result.all_known && wasmbrot.dwell() < maxDwell) {
     requestAnimationFrame(draw);
   }
 }
