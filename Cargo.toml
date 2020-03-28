@@ -3,6 +3,9 @@ name = "wasmbrot"
 version = "0.1.0"
 authors = ["Jiang Meng Liao <alexandre.liao@gmail.com>"]
 edition = "2018"
+description = "A simple web-based mandelbrot viewer and point-and-click zoomer, with a beautiful pastel color scheme"
+repository = "https://github.com/alexandreliao/wasmbrot"
+license = "Apache-2.0"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
