@@ -4,8 +4,7 @@ Once upon a time there lived a wistful young boy who longed to look at pastel-co
 # required dev dependencies
 rust (https://www.rust-lang.org/tools/install)
 wasm-pack (https://rustwasm.github.io/wasm-pack/installer/)
+chromium-based browser (https://www.chromium.org/Home)
 
-# optional dev dependencies
-python3 (https://www.python.org/downloads/) or from your package manager
-OR
-some other local server solution (so you can test your code on localhost!)
+# optional quality-of-life
+python3 (https://www.python.org/downloads/) for the `python -m http.server`
