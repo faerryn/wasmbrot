@@ -40,10 +40,6 @@ onmessage = function(msg) {
       wasmbrot = Wasmbrot.new(
         width,
         height,
-        left,
-        top,
-        pixelWidth,
-        pixelHeight
       );
 
       const colorsPtr = wasmbrot.colors();
@@ -53,14 +49,14 @@ onmessage = function(msg) {
         4 * width * height
       );
       image = new ImageData(colors, width);
-    } else {
-      wasmbrot.reparam(
-        left,
-        top,
-        pixelWidth,
-        pixelHeight
-      );
     }
+
+    wasmbrot.param(
+      left,
+      top,
+      pixelWidth,
+      pixelHeight
+    );
 
     requestAnimationFrame(function() {
       ctx.putImageData(image, 0, 0);

@@ -92,14 +92,10 @@ export class Wasmbrot {
     /**
     * @param {number} width
     * @param {number} height
-    * @param {number} left
-    * @param {number} top
-    * @param {number} pixel_width
-    * @param {number} pixel_height
     * @returns {Wasmbrot}
     */
-    static new(width, height, left, top, pixel_width, pixel_height) {
-        var ret = wasm.wasmbrot_new(width, height, left, top, pixel_width, pixel_height);
+    static new(width, height) {
+        var ret = wasm.wasmbrot_new(width, height);
         return Wasmbrot.__wrap(ret);
     }
     /**
@@ -108,8 +104,8 @@ export class Wasmbrot {
     * @param {number} pixel_width
     * @param {number} pixel_height
     */
-    reparam(left, top, pixel_width, pixel_height) {
-        wasm.wasmbrot_reparam(this.ptr, left, top, pixel_width, pixel_height);
+    param(left, top, pixel_width, pixel_height) {
+        wasm.wasmbrot_param(this.ptr, left, top, pixel_width, pixel_height);
     }
     /**
     * @param {BigInt} step_size

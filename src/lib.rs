@@ -9,63 +9,44 @@ pub struct Wasmbrot {
     points: Vec<Point>,
     zs: Vec<Complex<f64>>,
     cs: Vec<Complex<f64>>,
-    period_checks: Vec<PeriodCheck>,
+    lasts: Vec<Complex<f64>>,
+    period_check_dwell: u64,
     colors: Vec<u8>,
 }
 
 #[wasm_bindgen]
 impl Wasmbrot {
-    pub fn new(
-        width: usize,
-        height: usize,
-        left: f64,
-        top: f64,
-        pixel_width: f64,
-        pixel_height: f64,
-    ) -> Wasmbrot {
-        let mut zs = Vec::with_capacity(width * height);
-        let mut cs = Vec::with_capacity(width * height);
-        let mut period_checks = Vec::with_capacity(width * height);
-        let mut colors = Vec::with_capacity(4 * width * height);
-
-        for idx in 0..width * height {
-            let row = idx / width;
-            let col = idx % width;
-
-            let x = left + col as f64 * pixel_width;
-            let y = top - row as f64 * pixel_height;
-
-            let z = Complex::new(x, y);
-            zs.push(z);
-            period_checks.push(PeriodCheck::new(z));
-            cs.push(z);
-
-            colors.push(0);
-            colors.push(0);
-            colors.push(0);
-            colors.push(0xff);
-        }
-
+    pub fn new(width: usize, height: usize) -> Wasmbrot {
         Wasmbrot {
             width,
             height,
             dwell: 0,
             points: vec![Point::Unknown(0); width * height],
-            zs,
-            cs,
-            period_checks,
-            colors,
+            zs: Vec::with_capacity(width * height),
+            cs: Vec::with_capacity(width * height),
+            lasts: Vec::with_capacity(width * height),
+            period_check_dwell: 8,
+            colors: Vec::with_capacity(4 * width * height),
         }
     }
 
-    pub fn reparam(&mut self, left: f64, top: f64, pixel_width: f64, pixel_height: f64) {
-        self.dwell = 0;
-        for idx in 0..self.width * self.height {
-            self.points[idx] = Point::Unknown(0);
+    pub fn param(&mut self, left: f64, top: f64, pixel_width: f64, pixel_height: f64) {
+        self.points.clear();
+        self.zs.clear();
+        self.cs.clear();
+        self.lasts.clear();
+        self.colors.clear();
 
-            self.colors[4 * idx] = 0;
-            self.colors[4 * idx + 1] = 0;
-            self.colors[4 * idx + 2] = 0;
+        self.dwell = 0;
+        self.period_check_dwell = 8;
+
+        for idx in 0..self.width * self.height {
+            self.points.push(Point::Unknown(0));
+
+            self.colors.push(0);
+            self.colors.push(0);
+            self.colors.push(0);
+            self.colors.push(0xff);
 
             let row = idx / self.width;
             let col = idx % self.width;
@@ -74,9 +55,9 @@ impl Wasmbrot {
             let y = top - row as f64 * pixel_height;
 
             let z = Complex::new(x, y);
-            self.zs[idx] = z;
-            self.period_checks[idx] = PeriodCheck::new(z);
-            self.cs[idx] = z;
+            self.zs.push(z);
+            self.lasts.push(z);
+            self.cs.push(z);
         }
     }
 
@@ -92,7 +73,7 @@ impl Wasmbrot {
 
                 let c = &self.cs[idx];
                 let z = &mut self.zs[idx];
-                let period_check = &mut self.period_checks[idx];
+                let last = &mut self.lasts[idx];
 
                 for _ in 0..step_size {
                     let re_squared = z.re * z.re;
@@ -110,17 +91,20 @@ impl Wasmbrot {
                     z.re = re_squared - im_squared + c.re;
                     z.im = 2.0 * re_im + c.im;
 
-                    if *z == period_check.check_against {
+                    if z == last {
                         self.points[idx] = Point::InSet;
                         break;
                     }
 
-                    if *dwell > period_check.dwell_bounds {
-                        period_check.check_against = *z;
-                        period_check.dwell_bounds *= 2;
+                    if *dwell > self.period_check_dwell {
+                        *last = *z;
                     }
                 }
             }
+        }
+
+        if self.dwell > self.period_check_dwell {
+            self.period_check_dwell *= 2;
         }
 
         StepResult {
@@ -183,13 +167,4 @@ enum Point {
 struct PeriodCheck {
     check_against: Complex<f64>,
     dwell_bounds: u64,
-}
-
-impl PeriodCheck {
-    fn new(check_against: Complex<f64>) -> PeriodCheck {
-        PeriodCheck {
-            check_against,
-            dwell_bounds: 8,
-        }
-    }
 }
