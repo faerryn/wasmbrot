@@ -21,31 +21,31 @@ let workersReceivedCanvas = false;
 let parameters = new Parameters();
 
 (window.onpopstate = function() {
-  const params = new URL(document.location).searchParams;
+  const params         = new URL(document.location).searchParams;
   parameters.colorDist = parseFloat(params.get("colorDist")) || 16;
-  parameters.x = parseFloat(params.get("x")) || 0;
-  parameters.y = parseFloat(params.get("y")) || 0;
-  parameters.scale = parseFloat(params.get("scale")) || 2;
+  parameters.x         = parseFloat(params.get("x")) || 0;
+  parameters.y         = parseFloat(params.get("y")) || 0;
+  parameters.scale     = parseFloat(params.get("scale")) || 2;
 
-  view = new View(parameters);
+  view                 = new View(parameters);
 
   try {
-    stepSize = BigInt(params.get("stepSize"));
+    stepSize           = BigInt(params.get("stepSize"));
   } catch (e) {
-    stepSize = 16n;
+    stepSize           = 16n;
   }
 
-  canvasRows =
+  canvasRows           =
     parseInt(params.get("canvasRows")) ||
     Math.ceil(Math.sqrt(navigator.hardwareConcurrency));
 
-  canvasCols =
+  canvasCols           =
     parseInt(params.get("canvasCols")) ||
     Math.ceil(navigator.hardwareConcurrency / canvasRows);
 
-  zoom = parseFloat(params.get("zoom")) || 4;
+  zoom                 = parseFloat(params.get("zoom")) || 4;
 
-  maxDwell = parseFloat(params.get("maxDwell")) || Infinity;
+  maxDwell             = parseFloat(params.get("maxDwell")) || Infinity;
 
   if (workersReceivedCanvas) {
     reparam();

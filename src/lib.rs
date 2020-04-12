@@ -7,10 +7,10 @@ pub struct Wasmbrot {
     height: usize,
     dwell: u64,
     points: Vec<Point>,
-    zs: Vec<Complex<f64>>,
-    cs: Vec<Complex<f64>>,
-    lasts: Vec<Complex<f64>>,
-    period_check_dwell: u64,
+    z_points: Vec<Complex<f64>>,
+    c_points: Vec<Complex<f64>>,
+    orbit_lasts: Vec<Complex<f64>>,
+    orbit_dwell: u64,
     colors: Vec<u8>,
 }
 
@@ -22,23 +22,23 @@ impl Wasmbrot {
             height,
             dwell: 0,
             points: vec![Point::Unknown(0); width * height],
-            zs: Vec::with_capacity(width * height),
-            cs: Vec::with_capacity(width * height),
-            lasts: Vec::with_capacity(width * height),
-            period_check_dwell: 8,
+            z_points: Vec::with_capacity(width * height),
+            c_points: Vec::with_capacity(width * height),
+            orbit_lasts: Vec::with_capacity(width * height),
+            orbit_dwell: 8,
             colors: Vec::with_capacity(4 * width * height),
         }
     }
 
     pub fn param(&mut self, left: f64, top: f64, pixel_width: f64, pixel_height: f64) {
         self.points.clear();
-        self.zs.clear();
-        self.cs.clear();
-        self.lasts.clear();
+        self.z_points.clear();
+        self.c_points.clear();
+        self.orbit_lasts.clear();
         self.colors.clear();
 
         self.dwell = 0;
-        self.period_check_dwell = 8;
+        self.orbit_dwell = 8;
 
         for idx in 0..self.width * self.height {
             self.points.push(Point::Unknown(0));
@@ -55,9 +55,9 @@ impl Wasmbrot {
             let y = top - row as f64 * pixel_height;
 
             let z = Complex::new(x, y);
-            self.zs.push(z);
-            self.lasts.push(z);
-            self.cs.push(z);
+            self.z_points.push(z);
+            self.orbit_lasts.push(z);
+            self.c_points.push(z);
         }
     }
 
@@ -71,9 +71,9 @@ impl Wasmbrot {
             if let Point::Unknown(dwell) = &mut self.points[idx] {
                 all_known = false;
 
-                let c = &self.cs[idx];
-                let z = &mut self.zs[idx];
-                let last = &mut self.lasts[idx];
+                let c = &self.c_points[idx];
+                let z = &mut self.z_points[idx];
+                let last = &mut self.orbit_lasts[idx];
 
                 for _ in 0..step_size {
                     let re_squared = z.re * z.re;
@@ -96,15 +96,15 @@ impl Wasmbrot {
                         break;
                     }
 
-                    if *dwell > self.period_check_dwell {
+                    if *dwell > self.orbit_dwell {
                         *last = *z;
                     }
                 }
             }
         }
 
-        if self.dwell > self.period_check_dwell {
-            self.period_check_dwell *= 2;
+        if self.dwell > self.orbit_dwell {
+            self.orbit_dwell *= 2;
         }
 
         StepResult {
@@ -161,10 +161,4 @@ enum Point {
     InSet,
     NotRendered(u64),
     Rendered,
-}
-
-#[derive(Clone)]
-struct PeriodCheck {
-    check_against: Complex<f64>,
-    dwell_bounds: u64,
 }
