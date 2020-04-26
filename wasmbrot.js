@@ -17,10 +17,6 @@ function getStringFromWasm0(ptr, len) {
     return cachedTextDecoder.decode(getUint8Memory0().subarray(ptr, ptr + len));
 }
 
-function isLikeNone(x) {
-    return x === undefined || x === null;
-}
-
 const u32CvtShim = new Uint32Array(2);
 
 const uint64CvtShim = new BigUint64Array(u32CvtShim.buffer);
@@ -94,36 +90,22 @@ export class Wasmbrot {
         wasm.__wbg_wasmbrot_free(ptr);
     }
     /**
-    * @param {number} multi
-    * @param {boolean} burning
-    * @param {number | undefined} julia_re
-    * @param {number | undefined} julia_im
-    * @param {number} escape
     * @param {number} width
     * @param {number} height
-    * @param {number} left
-    * @param {number} top
-    * @param {number} pixel_width
-    * @param {number} pixel_height
     * @returns {Wasmbrot}
     */
-    static new(multi, burning, julia_re, julia_im, escape, width, height, left, top, pixel_width, pixel_height) {
-        var ret = wasm.wasmbrot_new(multi, burning, !isLikeNone(julia_re), isLikeNone(julia_re) ? 0 : julia_re, !isLikeNone(julia_im), isLikeNone(julia_im) ? 0 : julia_im, escape, width, height, left, top, pixel_width, pixel_height);
+    static new(width, height) {
+        var ret = wasm.wasmbrot_new(width, height);
         return Wasmbrot.__wrap(ret);
     }
     /**
-    * @param {number} multi
-    * @param {boolean} burning
-    * @param {number | undefined} julia_re
-    * @param {number | undefined} julia_im
-    * @param {number} escape
     * @param {number} left
     * @param {number} top
     * @param {number} pixel_width
     * @param {number} pixel_height
     */
-    reparam(multi, burning, julia_re, julia_im, escape, left, top, pixel_width, pixel_height) {
-        wasm.wasmbrot_reparam(this.ptr, multi, burning, !isLikeNone(julia_re), isLikeNone(julia_re) ? 0 : julia_re, !isLikeNone(julia_im), isLikeNone(julia_im) ? 0 : julia_im, escape, left, top, pixel_width, pixel_height);
+    param(left, top, pixel_width, pixel_height) {
+        wasm.wasmbrot_param(this.ptr, left, top, pixel_width, pixel_height);
     }
     /**
     * @param {BigInt} step_size

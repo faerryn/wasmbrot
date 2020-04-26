@@ -1,12 +1,8 @@
 "use strict";
+
 const width = window.innerWidth;
 const height = window.innerHeight;
 
-let multi;
-let burning;
-let juliaRe;
-let juliaIm;
-let escape;
 let colorDist;
 let view;
 let stepSize;
@@ -25,36 +21,31 @@ let workersReceivedCanvas = false;
 let parameters = new Parameters();
 
 (window.onpopstate = function() {
-  const params = new URL(document.location).searchParams;
-  parameters.multi = parseFloat(params.get("multi")) || 2;
-  parameters.burning = parseInt(params.get("burning")) || false;
-  parameters.juliaRe = parseFloat(params.get("juliaRe")) || null;
-  parameters.juliaIm = parseFloat(params.get("juliaIm")) || null;
-  parameters.escape = parseFloat(params.get("escape")) || 2;
+  const params         = new URL(document.location).searchParams;
   parameters.colorDist = parseFloat(params.get("colorDist")) || 16;
-  parameters.x = parseFloat(params.get("x")) || 0;
-  parameters.y = parseFloat(params.get("y")) || 0;
-  parameters.scale = parseFloat(params.get("scale")) || 2;
+  parameters.x         = parseFloat(params.get("x")) || 0;
+  parameters.y         = parseFloat(params.get("y")) || 0;
+  parameters.scale     = parseFloat(params.get("scale")) || 2;
 
-  view = new View(parameters);
+  view                 = new View(parameters);
 
   try {
-    stepSize = BigInt(params.get("stepSize"));
+    stepSize           = BigInt(params.get("stepSize"));
   } catch (e) {
-    stepSize = 16n;
+    stepSize           = 16n;
   }
 
-  canvasRows =
+  canvasRows           =
     parseInt(params.get("canvasRows")) ||
     Math.ceil(Math.sqrt(navigator.hardwareConcurrency));
 
-  canvasCols =
+  canvasCols           =
     parseInt(params.get("canvasCols")) ||
     Math.ceil(navigator.hardwareConcurrency / canvasRows);
 
-  zoom = parseFloat(params.get("zoom")) || 4;
+  zoom                 = parseFloat(params.get("zoom")) || 4;
 
-  maxDwell = parseFloat(params.get("maxDwell")) || Infinity;
+  maxDwell             = parseFloat(params.get("maxDwell")) || Infinity;
 
   if (workersReceivedCanvas) {
     reparam();
@@ -117,18 +108,12 @@ function reparam() {
     worker.postMessage(
       {
         canvas: !workersReceivedCanvas ? canvas : undefined,
-        // multi,
-        // burning,
-        // juliaRe: isNaN(juliaRe) ? null : juliaRe,
-        // juliaIm: isNaN(juliaIm) ? null : juliaIm,
-        // escape,
         left,
         top,
         pixelWidth: view.pixelSize,
         pixelHeight: view.pixelSize,
         stepSize,
         maxDwell,
-        // colorDist
         parameters
       },
       !workersReceivedCanvas ? [canvas] : []
@@ -208,40 +193,13 @@ function Parameters(
   x,
   y,
   scale,
-  multi,
-  burning,
-  juliaRe,
-  juliaIm,
-  escape,
   colorDist
 ) {
   this.x = x || 0;
   this.y = y || 0;
   this.scale = scale || 2;
-  this.multi = multi || 2;
-  this.burning = burning || false;
-  this.juliaRe = juliaRe || null;
-  this.juliaIm = juliaIm || null;
-  this.escape = escape || 2;
   this.colorDist = colorDist || 16;
 }
-
-// function currentState() {
-//   return {
-//     multi,
-//     burning,
-//     juliaRe,
-//     juliaIm,
-//     escape,
-//     x: view.x,
-//     y: view.y,
-//     scale: view.scale,
-//     stepSize,
-//     colorDist,
-//     maxDwell,
-//     zoom
-//   };
-// }
 
 function View(params) {
   this.x = params.x;
