@@ -1,4 +1,4 @@
-use num::*;
+use num_complex::Complex;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
