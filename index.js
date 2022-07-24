@@ -20,7 +20,7 @@ let workersReceivedCanvas = false;
 
 let parameters = new Parameters();
 
-(window.onpopstate = function() {
+function main() {
     const params         = new URL(document.location).searchParams;
     parameters.colorDist = parseFloat(params.get("colorDist")) || 16;
     parameters.x         = parseFloat(params.get("x")) || 0;
@@ -50,7 +50,11 @@ let parameters = new Parameters();
     if (workersReceivedCanvas) {
         reparam();
     }
-})(); // run this function now!
+}
+
+window.onpopstate = main;
+
+main();
 
 const workerLen = canvasRows * canvasCols;
 let notReady = workerLen;
